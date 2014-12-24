@@ -27,6 +27,7 @@ int squaredmetres_to_squaredfeet(int squaredMetres);
 int metres_to_feet(int metres);
 int mph_to_kmph(int mph);
 
+const char *path_get_extension(const char *path);
 void path_set_extension(char *path, const char *extension);
 long fsize(FILE *fp);
 

@@ -24,6 +24,7 @@
 #include "../interface/viewport.h"
 #include "../interface/window.h"
 #include "../platform/osinterface.h"
+#include "../title.h"
 #include "../world/map.h"
 #include "../world/sprite.h"
 #include "audio.h"
@@ -1546,11 +1547,14 @@ void start_title_music()
 {
 	if ((RCT2_GLOBAL(0x009AF284, uint32) & (1 << 0)) && RCT2_GLOBAL(0x009AF59D, uint8) & 1 && RCT2_GLOBAL(RCT2_ADDRESS_SCREEN_FLAGS, uint8) & 1) {
 		if (!RCT2_GLOBAL(0x009AF600, uint8)) {
+			// Play old title music
+			int pathId = gOldMusic ? PATH_ID_CSS50 : PATH_ID_CSS17;
+
 #ifdef USE_MIXER
-			gTitleMusicChannel = Mixer_Play_Music(PATH_ID_CSS17);
+			gTitleMusicChannel = Mixer_Play_Music(pathId);
 #else
 			RCT2_GLOBAL(0x014241BC, uint32) = 1;
-			int result = sound_channel_load_file2(3, (char*)get_file_path(PATH_ID_CSS17), 0);
+			int result = sound_channel_load_file2(3, (char*)get_file_path(pathId), 0);
 			RCT2_GLOBAL(0x014241BC, uint32) = 0;
 			if (result) {
 				RCT2_GLOBAL(0x014241BC, uint32) = 1;

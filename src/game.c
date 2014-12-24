@@ -613,9 +613,8 @@ static void load_landscape()
  * 
  *  rct2: 0x00675E1B
  */
-int game_load_save(const char *path)
+int game_load_sv6(const char *path)
 {
-	rct_window *mainWindow;
 	FILE *file;
 	int i, j;
 
@@ -682,8 +681,7 @@ int game_load_save(const char *path)
 			RCT2_GLOBAL(0x14241BC, uint32) = 0;
 			RCT2_GLOBAL(0x9DE518, uint32) &= ~(1<<5);
 		}
-		title_load();
-		rct2_endupdate();
+
 		return 0;//This never gets called
 	}
 
@@ -691,6 +689,23 @@ int game_load_save(const char *path)
 	RCT2_CALLPROC_EBPSAFE(0x006A9FC0);
 	map_update_tile_pointers();
 	reset_0x69EBE4();// RCT2_CALLPROC_EBPSAFE(0x0069EBE4);
+	return 1;
+}
+
+/**
+ * 
+ *  rct2: 0x00675E1B
+ */
+int game_load_save(const char *path)
+{
+	rct_window *mainWindow;
+
+	if (!game_load_sv6(path)) {
+		title_load();
+		rct2_endupdate();
+		return 0;
+	}
+
 	RCT2_GLOBAL(RCT2_ADDRESS_SCREEN_FLAGS, uint8) = SCREEN_FLAGS_PLAYING;
 	viewport_init_all();
 	game_create_windows();

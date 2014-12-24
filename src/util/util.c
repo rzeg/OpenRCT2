@@ -41,6 +41,15 @@ int mph_to_kmph(int mph)
 	return (mph * 1648) / 1024;
 }
 
+const char *path_get_extension(const char *path)
+{
+	const char *ch = path;
+	while (*ch != '.' && *ch != 0) {
+		ch++;
+	}
+	return ch;
+}
+
 void path_set_extension(char *path, const char *extension)
 {
 	char *ch = path;

@@ -41,10 +41,22 @@
     <Filter Include="Source\Peep">
       <UniqueIdentifier>{51e38783-5334-464c-8f90-61d725dc8013}</UniqueIdentifier>
     </Filter>
+    <Filter Include="data">
+      <UniqueIdentifier>{c9e73b31-9594-4cbf-ac22-f48f5af2ed95}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="data\title">
+      <UniqueIdentifier>{7d1e8927-ae06-4ef9-a3cc-c9fa0ef3b550}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\openrct2.exe">
       <Filter>Resource Files</Filter>
+    </None>
+    <None Include="..\data\title\nick.sv6">
+      <Filter>data\title</Filter>
+    </None>
+    <None Include="..\data\title\axel.sv6">
+      <Filter>data\title</Filter>
     </None>
   </ItemGroup>
   <ItemGroup>
@@ -333,7 +345,6 @@
     <ClCompile Include="..\lib\lodepng\lodepng.c" />
     <ClCompile Include="..\lib\lodepng\lodepng.c" />
     <ClCompile Include="..\lib\lodepng\lodepng.c" />
-    <ClCompile Include="..\lib\lodepng\lodepng.c" />
     <ClCompile Include="..\src\cmdline.c">
       <Filter>Source</Filter>
     </ClCompile>
@@ -341,7 +352,7 @@
       <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="..\lib\lodepng\lodepng.c" />
-    <ClCompile Include="..\lib\libspeex\resample.c;..\lib\lodepng\lodepng.c" />
+    <ClCompile Include="..\lib\lodepng\lodepng.c" />
     <ClCompile Include="..\src\world\fountain.c">
       <Filter>Source\World</Filter>
     </ClCompile>
@@ -612,5 +623,10 @@
     <ClInclude Include="..\src\toolbar.h">
       <Filter>Source</Filter>
     </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="..\data\title\script.txt">
+      <Filter>data\title</Filter>
+    </Text>
   </ItemGroup>
 </Project>

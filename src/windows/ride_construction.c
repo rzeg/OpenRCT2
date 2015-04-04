@@ -249,6 +249,7 @@ static void* window_ride_construction_events[] = {
 };
 
 static void window_ride_construction_mouseup_demolish(rct_window* w);
+static void window_ride_construction_draw_track_piece(rct_window *w, rct_drawpixelinfo *dpi);
 
 /**
  *
@@ -523,8 +524,9 @@ static void window_ride_construction_invalidate()
 static void window_ride_construction_paint()
 {
 	rct_window *w;
-	rct_drawpixelinfo *dpi;
+	rct_drawpixelinfo *dpi, *clipdpi;
 	rct_widget *widget;
+	int x, y;
 
 	window_paint_get_registers(w, dpi);
 
@@ -539,111 +541,40 @@ static void window_ride_construction_paint()
 	if (RCT2_CALLFUNC_X(0x006CA2DF, &eax, &ebx, &ecx, &edx, &esi, &edi, &ebp) & 0x100)
 		return;
 
-	RCT2_GLOBAL(0x00F44133, uint8_t) = edx & 0xFF;
-	RCT2_GLOBAL(0x00F44134, uint8_t) = (ebx >> 8) & 0xFF;
-	RCT2_GLOBAL(0x00F44135, uint8_t) = (edx >> 8) & 0xFF;
+	RCT2_GLOBAL(0x00F44133, uint8) = edx & 0xFF;
+	RCT2_GLOBAL(0x00F44134, uint8) = (ebx >> 8) & 0xFF;
+	RCT2_GLOBAL(0x00F44135, uint8) = (edx >> 8) & 0xFF;
 	edx >>= 16;
-	RCT2_GLOBAL(0x00F44136, int16_t) = edx;
+	RCT2_GLOBAL(0x00F44136, uint16) = edx;
 	rct_ride* ride = GET_RIDE(RCT2_GLOBAL(0x00F44133, uint8));
-	RCT2_GLOBAL(0x00F44064, uint32_t) = RCT2_GLOBAL(RCT2_ADDRESS_RIDE_FLAGS + ride->type * 8, uint32_t);
+	RCT2_GLOBAL(0x00F44064, uint32) = RCT2_GLOBAL(RCT2_ADDRESS_RIDE_FLAGS + ride->type * 8, uint32_t);
 
-	short width = widget->right - widget->left - 1;
-	short height = widget->bottom - widget->top - 1;
-	rct_drawpixelinfo* clip_dpi = clip_drawpixelinfo(
+	// Draw track piece
+	clipdpi = clip_drawpixelinfo(
 		dpi,
 		w->x + widget->left + 1,
-		width,
+		widget->right - widget->left - 1,
 		w->y + widget->top + 1,
-		height
+		widget->bottom - widget->top - 1
 	);
-	if (clip_dpi != NULL) {
-		rct_preview_track *trackBlock;
-		ecx = RCT2_GLOBAL(0x00F44135, uint8_t);
-		if (RCT2_GLOBAL(0x00F44064, uint32_t) & 0x80000)
-			trackBlock = RCT2_ADDRESS(0x00994A38, rct_preview_track*)[ecx];//RCT2_GLOBAL(0x994A38 + ecx * 4, rct_preview_track*);
-		else
-			trackBlock = RCT2_ADDRESS(0x00994638, rct_preview_track*)[ecx];//RCT2_GLOBAL(0x994638 + ecx * 4, rct_preview_track*);
-
-		while ((trackBlock + 1)->var_00 != 0xFF)
-			trackBlock++;
-
-		short x = trackBlock->x;
-		short z = trackBlock->z;
-		short y = trackBlock->y;
-		if (trackBlock->var_09 & 2) {
-			x = 0;
-			y = 0;
-		}
-
-		short tmp;
-		switch (RCT2_GLOBAL(0x00F44134, uint8_t) & 3) {
-		case 1:
-			tmp = x;
-			x = y;
-			y = -tmp;
-			break;
-		case 2:
-			x = -x;
-			y = -y;
-			break;
-		case 3:
-			tmp = x;
-			x = -y;
-			y = tmp;
-			break;
-		case 0:
-			break;
-		}
-		//this is actually case 0, but the other cases all jump to it
-		x /= 2;
-		y /= 2;
-		x += 4112;
-		y += 4112;
-		z += 1024;
-		ebx = RCT2_GLOBAL(0x00F44135, uint8_t);
-		short bx;
-		if (RCT2_GLOBAL(0x00F44064, uint32_t) & 0x80000)
-			bx = RCT2_GLOBAL(0x009984A2 + ebx * 8, uint8_t);
-		else
-			bx = RCT2_GLOBAL(0x00997CA2 + ebx * 8, uint8_t);
-		z -= bx;
-		int start_x = x;
-		switch (RCT2_GLOBAL(RCT2_ADDRESS_CURRENT_ROTATION, uint32_t)) {
-		case 0:
-			x = y - x;
-			y = (y + start_x) / 2 - z;
-			break;
-		case 1:
-			x = -x - y;
-			y = (y - start_x) / 2 - z;
-			break;
-		case 2:
-			x -= y;
-			y = (-y - start_x) / 2 - z;
-			break;
-		case 3:
-			x += y;
-			y = (-y + start_x) / 2 - z;
-			break;
-		}
-		clip_dpi->x += x - width / 2;
-		clip_dpi->y += y - height / 2 - 16;
-		RCT2_GLOBAL(0x140E9A8, rct_drawpixelinfo*) = clip_dpi;
-		uint32_t d = RCT2_GLOBAL(0xF44136, int16_t) << 16;
-		d |= RCT2_GLOBAL(0x00F44133, uint8_t);
-		d |= RCT2_GLOBAL(0x00F44135, uint8_t) << 8;
-		RCT2_CALLPROC_X(0x006CBCE2, 0x1000, (((uint16_t)bx) & 0xFF) | (RCT2_GLOBAL(0xF44134, uint8_t) << 8), 0x1000, d, width, 0x400, height);
-		rct2_free(clip_dpi);
+	if (clipdpi != NULL) {
+		window_ride_construction_draw_track_piece(w, clipdpi);
+		rct2_free(clipdpi);
 	}
 
-	short string_x = (widget->left + widget->right) / 2 + w->x;
-	short string_y = widget->bottom + w->y - 23;
-	if (RCT2_GLOBAL(0x00F440A6, uint8_t) != 4)
-		gfx_draw_string_centred(dpi, 1407, string_x, string_y, 0, w);
+	// Draw cost
+	x = w->x + (widget->left + widget->right) / 2;
+	y = w->y + widget->bottom - 23;
+	if (RCT2_GLOBAL(0x00F440A6, uint8) != 4)
+		gfx_draw_string_centred(dpi, 1407, x, y, 0, w);
 
-	string_y += 11;
-	if (RCT2_GLOBAL(0x00F44070, uint32_t) != 0x80000000 && !(RCT2_GLOBAL(RCT2_ADDRESS_PARK_FLAGS, uint32_t) & 0x800))
-		gfx_draw_string_centred(dpi, 1408, string_x, string_y, 0, (void*)0x00F44070);
+	y += 11;
+	if (
+		RCT2_GLOBAL(0x00F44070, money32) != MONEY32_UNDEFINED &&
+		!(RCT2_GLOBAL(RCT2_ADDRESS_PARK_FLAGS, uint32) & PARK_FLAGS_NO_MONEY)
+	) {
+		gfx_draw_string_centred(dpi, 1408, x, y, 0, (void*)0x00F44070);
+	}
 }
 
 /**
@@ -658,4 +589,97 @@ static void window_ride_construction_maze_paint()
 	window_paint_get_registers(w, dpi);
 	
 	window_draw_widgets(w, dpi);
+}
+
+static void window_ride_construction_draw_track_piece(rct_window *w, rct_drawpixelinfo *dpi)
+{
+	rct_preview_track *trackBlock;
+	int ebx, ecx;
+
+	rct_ride* ride = GET_RIDE(RCT2_GLOBAL(0x00F44133, uint8));
+
+	ecx = RCT2_GLOBAL(0x00F44135, uint8);
+	if (ride_type_has_flag(ride->type, RIDE_TYPE_FLAG_SELLS_FOOD))
+		trackBlock = RCT2_ADDRESS(0x00994A38, rct_preview_track*)[ecx];
+	else
+		trackBlock = RCT2_ADDRESS(0x00994638, rct_preview_track*)[ecx];
+
+	while ((trackBlock + 1)->var_00 != 0xFF)
+		trackBlock++;
+
+	short x = trackBlock->x;
+	short z = trackBlock->z;
+	short y = trackBlock->y;
+	if (trackBlock->var_09 & 2) {
+		x = 0;
+		y = 0;
+	}
+
+	short tmp;
+	switch (RCT2_GLOBAL(0x00F44134, uint8_t) & 3) {
+	case 1:
+		tmp = x;
+		x = y;
+		y = -tmp;
+		break;
+	case 2:
+		x = -x;
+		y = -y;
+		break;
+	case 3:
+		tmp = x;
+		x = -y;
+		y = tmp;
+		break;
+	case 0:
+		break;
+	}
+	//this is actually case 0, but the other cases all jump to it
+	x /= 2;
+	y /= 2;
+	x += 4112;
+	y += 4112;
+	z += 1024;
+	ebx = RCT2_GLOBAL(0x00F44135, uint8_t);
+	short bx;
+	if (ride_type_has_flag(ride->type, RIDE_TYPE_FLAG_SELLS_FOOD))
+		bx = RCT2_GLOBAL(0x009984A2 + ebx * 8, uint8_t);
+	else
+		bx = RCT2_GLOBAL(0x00997CA2 + ebx * 8, uint8_t);
+	z -= bx;
+	int start_x = x;
+	switch (RCT2_GLOBAL(RCT2_ADDRESS_CURRENT_ROTATION, uint32_t)) {
+	case 0:
+		x = y - x;
+		y = (y + start_x) / 2 - z;
+		break;
+	case 1:
+		x = -x - y;
+		y = (y - start_x) / 2 - z;
+		break;
+	case 2:
+		x -= y;
+		y = (-y - start_x) / 2 - z;
+		break;
+	case 3:
+		x += y;
+		y = (-y + start_x) / 2 - z;
+		break;
+	}
+	dpi->x += x - dpi->width / 2;
+	dpi->y += y - dpi->height / 2 - 16;
+	RCT2_GLOBAL(0x140E9A8, rct_drawpixelinfo*) = dpi;
+	uint32_t d = RCT2_GLOBAL(0xF44136, int16_t) << 16;
+	d |= RCT2_GLOBAL(0x00F44133, uint8_t);
+	d |= RCT2_GLOBAL(0x00F44135, uint8_t) << 8;
+	RCT2_CALLPROC_X(
+		0x006CBCE2,
+		0x1000,
+		(((uint16_t)bx) & 0xFF) | (RCT2_GLOBAL(0xF44134, uint8_t) << 8),
+		0x1000,
+		d,
+		dpi->width,
+		0x400,
+		dpi->height
+	);
 }

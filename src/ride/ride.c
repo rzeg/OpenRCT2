@@ -594,15 +594,6 @@ void ride_construct(int rideIndex)
 
 /**
  * 
- * rct2: 0x006C84CE
- */
-static void sub_6C84CE()
-{
-	RCT2_CALLPROC_X(0x006C84CE, 0, 0, 0, 0, 0, 0, 0);
-}
-
-/**
- * 
  * rct2: 0x006DD4D5
  */
 static void ride_remove_cable_lift(rct_ride *ride)

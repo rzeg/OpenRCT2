@@ -21,6 +21,7 @@
 #include "../addresses.h"
 #include "../drawing/drawing.h"
 #include "../game.h"
+#include "../input.h"
 #include "../interface/viewport.h"
 #include "../interface/widget.h"
 #include "../interface/window.h"
@@ -177,6 +178,7 @@ static void window_ride_construction_emptysub() {}
 
 static void window_ride_construction_close();
 static void window_ride_construction_mouseup();
+static void window_ride_construction_update(rct_window *w);
 static void window_ride_construction_invalidate();
 static void window_ride_construction_paint();
 
@@ -224,7 +226,7 @@ static void* window_ride_construction_events[] = {
 	(void*)0x006C6E6A,
 	(void*)0x006C78CD,
 	window_ride_construction_emptysub,
-	(void*)0x006C8374,
+	window_ride_construction_update,
 	window_ride_construction_emptysub,
 	window_ride_construction_emptysub,
 	(void*)0x006C8229,
@@ -250,6 +252,14 @@ static void* window_ride_construction_events[] = {
 
 static void window_ride_construction_mouseup_demolish(rct_window* w);
 static void window_ride_construction_draw_track_piece(rct_window *w, rct_drawpixelinfo *dpi);
+static bool sub_6CA2DF(int *trackType, int *trackRotation, int *dl, int *edxRS16);
+static void sub_6C6A77();
+
+#define _previousTrackPieceSlope RCT2_GLOBAL(0x00F440A0, uint16)
+#define _currentRideIndex RCT2_GLOBAL(0x00F440A7, uint8)
+#define _currentTrackPieceRotation RCT2_GLOBAL(0x00F440AE, uint8)
+#define _currentTrackPieceX RCT2_GLOBAL(0x00F440A8, uint16)
+#define _currentTrackPieceY RCT2_GLOBAL(0x00F440AA, uint16)
 
 /**
  *
@@ -257,7 +267,7 @@ static void window_ride_construction_draw_track_piece(rct_window *w, rct_drawpix
  */
 rct_window *window_ride_construction_open()
 {
-	int rideIndex = RCT2_GLOBAL(0x00F440A7, uint8);
+	int rideIndex = _currentRideIndex;
 	sub_6B2FA9(rideIndex);
 
 	rct_window *w;
@@ -308,7 +318,7 @@ rct_window *window_ride_construction_open()
 	if (ride->type == RIDE_TYPE_AIR_POWERED_VERTICAL_COASTER)
 		RCT2_GLOBAL(0x00F440CE, uint8) = 30;
 
-	RCT2_GLOBAL(0x00F440A0, uint16) = RCT2_ADDRESS(0x0097CC68, uint8)[ride->type * 2] | 0x100;
+	_previousTrackPieceSlope = RCT2_ADDRESS(0x0097CC68, uint8)[ride->type * 2] | 0x100;
 	RCT2_GLOBAL(0x00F440B2, uint8) = 0;
 	RCT2_GLOBAL(0x00F440B3, uint8) = 0;
 	RCT2_GLOBAL(0x00F440B4, uint8) = 0;
@@ -348,7 +358,7 @@ static void window_ride_construction_close()
 
 	hide_gridlines();
 
-	uint8 rideIndex = RCT2_GLOBAL(0x00F440A7, uint8);
+	uint8 rideIndex = _currentRideIndex;
 	if (sub_6CAF80(rideIndex, &mapElement)) {
 		window_ride_main_open(rideIndex);
 	} else {
@@ -379,7 +389,7 @@ static void window_ride_construction_maze_close()
 
 	hide_gridlines();
 
-	uint8 rideIndex = RCT2_GLOBAL(0x00F440A7, uint8);
+	uint8 rideIndex = _currentRideIndex;
 	rct_ride* ride = GET_RIDE(rideIndex);
 	if (ride->overall_view == 0xFFFF) {
 		int savedPausedState = RCT2_GLOBAL(RCT2_ADDRESS_GAME_PAUSED, uint8);
@@ -402,8 +412,7 @@ static void window_ride_construction_mouseup()
 
 	window_widget_get_registers(w, widgetIndex);
 
-	RCT2_CALLPROC_X(0x006C6A77, 0, 0, 0, 0, 0, 0, 0);
-
+	sub_6C6A77();
 	switch (widgetIndex){
 	case WIDX_CLOSE:
 		window_close(w);
@@ -451,17 +460,53 @@ static void window_ride_construction_mouseup_demolish(rct_window* w)
 
 	if (RCT2_GLOBAL(0x00F440A6, uint8) != 2) {
 		//6c9cc4
-		int eax = RCT2_GLOBAL(0x00F440A8, uint16),
+		int eax = _currentTrackPieceX,
 			ebx = RCT2_GLOBAL(0x00F440AF, uint8) || (RCT2_GLOBAL(RCT2_ADDRESS_TRACK_PREVIEW_ROTATION, uint8) << 8),
-			ecx = RCT2_GLOBAL(0x00F440AA, uint16),
+			ecx = _currentTrackPieceY,
 			edx = RCT2_GLOBAL(0x00F440AC, uint16);
 
 		sub_6C683D(&eax, &ecx, edx, RCT2_GLOBAL(RCT2_ADDRESS_TRACK_PREVIEW_ROTATION, uint8), RCT2_GLOBAL(0xF440AF, uint8) & 0x3FF, 0, 0, 0);
 	}
 
-	int ride_id = RCT2_GLOBAL(0x00F440A7, uint8);
-	RCT2_GLOBAL(0x00F441D2, uint8) = ride_id;
+	RCT2_GLOBAL(0x00F441D2, uint8) = _currentRideIndex;
 	//6c9BFE
+}
+
+/**
+ *
+ * rct2: 0x006C8374
+ */
+static void window_ride_construction_update(rct_window *w)
+{
+	switch (_previousTrackPieceSlope) {
+	case 429:
+	case 376:
+	case 369:
+	case 368:
+		widget_invalidate(w, WIDX_CONSTRUCT);
+		break;
+	}
+
+	if (RCT2_GLOBAL(0x00F440A6, uint8) == 4) {
+		if (!widget_is_active_tool(w, WIDX_ENTRANCE) && !widget_is_active_tool(w, WIDX_EXIT)) {
+			RCT2_GLOBAL(0x00F440A6, uint8) = RCT2_GLOBAL(0x00F440CC, uint8);
+			sub_6C84CE();
+		}
+	}
+	switch (RCT2_GLOBAL(0x00F440A6, uint8)) {
+	case 1:
+	case 2:
+	case 3:
+		if (
+			(RCT2_GLOBAL(RCT2_ADDRESS_INPUT_FLAGS, uint32) & INPUT_FLAG_TOOL_ACTIVE) &&
+			RCT2_GLOBAL(RCT2_ADDRESS_TOOL_WINDOWCLASS, rct_windowclass) == WC_RIDE_CONSTRUCTION
+		) {
+			tool_cancel();
+		}
+		break;
+	}
+
+	RCT2_CALLPROC_X(0x006C94D8, 0, 0, 0, 0, (int)w, 0, 0);
 }
 
 /**
@@ -470,8 +515,7 @@ static void window_ride_construction_mouseup_demolish(rct_window* w)
  */
 static void window_ride_construction_maze_invalidate()
 {
-	int rideIndex = RCT2_GLOBAL(0x00F440A7, uint8);
-	rct_ride *ride = GET_RIDE(rideIndex);
+	rct_ride *ride = GET_RIDE(_currentRideIndex);
 
 	// Set window title arguments
 	RCT2_GLOBAL(0x013CE956, uint16_t) = ride->name;
@@ -487,17 +531,14 @@ static void window_ride_construction_invalidate()
 	rct_window *w;
 	rct_ride *ride;
 	rct_string_id stringId;
-	int rideIndex, previousTrackPieceSlope;
 
 	window_get_register(w);
 
-	rideIndex = RCT2_GLOBAL(0x00F440A7, uint8);
-	ride = GET_RIDE(rideIndex);
+	ride = GET_RIDE(_currentRideIndex);
 
-	previousTrackPieceSlope = RCT2_GLOBAL(0x00F440A0, uint16);
 	stringId = STR_RIDE_CONSTRUCTION_SPECIAL;
-	if (previousTrackPieceSlope >= 256) {
-		stringId = RCT2_ADDRESS(0x00999492, rct_string_id)[previousTrackPieceSlope - 256];
+	if (_previousTrackPieceSlope >= 256) {
+		stringId = RCT2_ADDRESS(0x00999492, rct_string_id)[_previousTrackPieceSlope - 256];
 		if (stringId == STR_RAPIDS && ride->type == RIDE_TYPE_CAR_RIDE)
 			stringId = STR_LOG_BUMPS;
 	}
@@ -536,16 +577,14 @@ static void window_ride_construction_paint()
 	if (widget->type == WWT_EMPTY)
 		return;
 
-	uint32_t eax = 0, esi = (uint32_t)w, ebp = 0;//nothing
-	uint32_t ebx = 0, ecx = 0, edx = 0, edi = (uint32_t)dpi;//returns
-	if (RCT2_CALLFUNC_X(0x006CA2DF, &eax, &ebx, &ecx, &edx, &esi, &edi, &ebp) & 0x100)
+	int trackType, trackRotation, dl, edxRS16;
+	if (sub_6CA2DF(&trackType, &trackRotation, &dl, &edxRS16))
 		return;
 
-	RCT2_GLOBAL(0x00F44133, uint8) = edx & 0xFF;
-	RCT2_GLOBAL(0x00F44134, uint8) = (ebx >> 8) & 0xFF;
-	RCT2_GLOBAL(0x00F44135, uint8) = (edx >> 8) & 0xFF;
-	edx >>= 16;
-	RCT2_GLOBAL(0x00F44136, uint16) = edx;
+	RCT2_GLOBAL(0x00F44133, uint8) = dl;
+	RCT2_GLOBAL(0x00F44134, uint8) = trackRotation;
+	RCT2_GLOBAL(0x00F44135, uint8) = trackType;
+	RCT2_GLOBAL(0x00F44136, uint16) = edxRS16;
 	rct_ride* ride = GET_RIDE(RCT2_GLOBAL(0x00F44133, uint8));
 	RCT2_GLOBAL(0x00F44064, uint32) = RCT2_GLOBAL(RCT2_ADDRESS_RIDE_FLAGS + ride->type * 8, uint32_t);
 
@@ -682,4 +721,127 @@ static void window_ride_construction_draw_track_piece(rct_window *w, rct_drawpix
 		0x400,
 		dpi->height
 	);
+}
+
+/**
+ * 
+ * rct2: 0x006C84CE
+ */
+void sub_6C84CE()
+{
+	// RCT2_CALLPROC_X(0x006C84CE, 0, 0, 0, 0, 0, 0, 0); return;
+
+	rct_window *w;
+	rct_preview_track *trackBlock;
+	int trackType, trackRotation, originX, originY, offsetX, offsetY;
+
+	sub_6C6A77();
+	w = window_find_by_class(WC_RIDE_CONSTRUCTION);
+	if (w == NULL)
+		return;
+
+	map_invalidate_map_selection_tiles();
+	RCT2_GLOBAL(RCT2_ADDRESS_MAP_SELECTION_FLAGS, uint16) |= 10;
+
+	switch (RCT2_GLOBAL(0x00F440A6, uint8)) {
+	case 0:
+		trackRotation = _currentTrackPieceRotation;
+		trackType = 0;
+		originX = _currentTrackPieceX;
+		originY = _currentTrackPieceY;
+		break;
+	case 3:
+		trackRotation = _currentTrackPieceRotation;
+		trackType = RCT2_GLOBAL(0x00F440AF, uint8);
+		originX = _currentTrackPieceX;
+		originY = _currentTrackPieceY;
+		break;
+	default:
+		if (sub_6CA2DF(&trackType, &trackRotation, NULL, NULL)) {
+			trackRotation = _currentTrackPieceRotation;
+			trackType = 0;
+			originX = _currentTrackPieceX;
+			originY = _currentTrackPieceY;
+		}
+		break;
+	}
+
+	uint8 rideIndex = _currentRideIndex;
+	rct_ride *ride = GET_RIDE(rideIndex);
+
+	trackBlock = ride_type_has_flag(ride->type, RIDE_TYPE_FLAG_SELLS_FOOD) ?
+		RCT2_ADDRESS(0x00994638, rct_preview_track*)[trackType] :
+		RCT2_ADDRESS(0x00994A38, rct_preview_track*)[trackType];
+
+	trackRotation &= 3;
+	int selectionTileIndex = 0;
+	while (trackBlock->var_00 != 255) {
+		switch (trackRotation) {
+		case 0:
+			offsetX =  trackBlock->x;
+			offsetY =  trackBlock->y;
+			break;
+		case 1:
+			offsetX =  trackBlock->y;
+			offsetY = -trackBlock->x;
+			break;
+		case 2:
+			offsetX = -trackBlock->x;
+			offsetY = -trackBlock->y;
+			break;
+		case 3:
+			offsetX = -trackBlock->y;
+			offsetY =  trackBlock->x;
+			break;
+		}
+		gMapSelectionTiles[selectionTileIndex].x = originX + offsetX;
+		gMapSelectionTiles[selectionTileIndex].y = originY + offsetY;
+		selectionTileIndex++;
+		trackBlock++;
+	}
+	gMapSelectionTiles[selectionTileIndex].x = 255;
+	gMapSelectionTiles[selectionTileIndex].y = 255;
+	map_invalidate_map_selection_tiles();
+
+	// TODO
+}
+
+/**
+ * 
+ * rct2: 0x006CA2DF
+ * bh: trackRotation (out)
+ * dl: ??? (out)
+ * dh: trackType (out)
+ * edx >> 16: ??? (out)
+ */
+static bool sub_6CA2DF(int *trackType, int *trackRotation, int *dl, int *edxRS16)
+{
+	int eax, ebx, ecx, edx, esi, edi, ebp;
+	if (RCT2_CALLFUNC_X(0x006CA2DF, &eax, &ebx, &ecx, &edx, &esi, &edi, &ebp) & 0x100)
+		return true;
+
+	if (trackType != NULL) *trackType = (edx >> 8) & 0xFF;
+	if (trackRotation != NULL) *trackRotation = (ebx >> 8) & 0xFF;
+	if (dl != NULL) *dl = edx & 0xFF;
+	if (edxRS16 != NULL) *edxRS16 = (edx >> 16) & 0xFFFF;
+	return false;
+}
+
+static void sub_6C6A77()
+{
+	rct_ride *ride = GET_RIDE(_currentRideIndex);
+	rct_ride_type *rideEntry = ride_get_entry(ride);
+
+	int rideType = RCT2_GLOBAL(0x00F440B5, uint8) & 2 ? ride->type : RCT2_ADDRESS(0x0097D4F5, uint8)[ride->type];
+	RCT2_GLOBAL(0x00F44048, uint32) = rideEntry->var_1B6 & RCT2_ADDRESS(0x01357444, uint32)[rideType];
+	RCT2_GLOBAL(0x00F4404C, uint32) = rideEntry->var_1BA & RCT2_ADDRESS(0x01357644, uint32)[rideType];
+}
+
+/**
+ * 
+ * rct2: 0x006C94D8
+ */
+void sub_6C94D8()
+{
+
 }

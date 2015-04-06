@@ -787,5 +787,6 @@ bool ride_has_whirlpool(rct_ride *ride);
 bool ride_type_has_flag(int rideType, int flag);
 
 void sub_6C84CE();
+void sub_6C96C0();
 
 #endif

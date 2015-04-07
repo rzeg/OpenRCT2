@@ -363,7 +363,7 @@ int ride_find_track_gap(rct_xy_element *input, rct_xy_element *output)
 		return 0;
 	
 	w = window_find_by_class(WC_RIDE_CONSTRUCTION);
-	if (w != NULL && RCT2_GLOBAL(0x00F440A6, uint8) != 0 && RCT2_GLOBAL(0x00F440A7, uint8) == rideIndex)
+	if (w != NULL && RCT2_GLOBAL(0x00F440A6, uint8) != RIDE_CONSTRUCTION_STATE_0 && RCT2_GLOBAL(0x00F440A7, uint8) == rideIndex)
 		sub_6C9627();
 
 	loopTrackElement = NULL;
@@ -772,7 +772,7 @@ void sub_6C96C0()
 void sub_6C9627()
 {
 	switch (RCT2_GLOBAL(0x00F440A6, uint8)) {
-	case 3:
+	case RIDE_CONSTRUCTION_STATE_PLACE:
 	{
 		int x = RCT2_GLOBAL(0x00F440A8, uint16), y = RCT2_GLOBAL(0x00F440AA, uint16);
 		sub_6C683D(
@@ -787,9 +787,9 @@ void sub_6C9627()
 			); 
 	}
 		break;
-	case 6:
-	case 7:
-	case 8:
+	case RIDE_CONSTRUCTION_STATE_6:
+	case RIDE_CONSTRUCTION_STATE_7:
+	case RIDE_CONSTRUCTION_STATE_8:
 		if (RCT2_GLOBAL(0x00F440B0, uint8) & 1) {
 			map_invalidate_tile_full(
 				RCT2_GLOBAL(0x00F440A8, uint16) & 0xFFE0,
@@ -857,7 +857,7 @@ static int ride_modify_entrance_or_exit(rct_map_element *mapElement, int x, int 
 
 	sub_6C9627();
 	if (
-		RCT2_GLOBAL(0x00F440A6, uint8) != 5 ||
+		RCT2_GLOBAL(0x00F440A6, uint8) != RIDE_CONSTRUCTION_STATE_5 ||
 		!(RCT2_GLOBAL(RCT2_ADDRESS_INPUT_FLAGS, uint8) & INPUT_FLAG_TOOL_ACTIVE) ||
 		RCT2_GLOBAL(RCT2_ADDRESS_TOOL_WINDOWCLASS, rct_windowclass) != WC_RIDE_CONSTRUCTION
 	) {
@@ -868,8 +868,8 @@ static int ride_modify_entrance_or_exit(rct_map_element *mapElement, int x, int 
 		RCT2_GLOBAL(0x00F44193, uint8) = bl;
 		RCT2_GLOBAL(RCT2_ADDRESS_INPUT_FLAGS, uint8) |= INPUT_FLAG_6;
 		int al = RCT2_GLOBAL(0x00F440A6, uint8);
-		if (al != 5) {
-			RCT2_GLOBAL(0x00F440A6, uint8) = 5;
+		if (al != RIDE_CONSTRUCTION_STATE_5) {
+			RCT2_GLOBAL(0x00F440A6, uint8) = RIDE_CONSTRUCTION_STATE_5;
 			RCT2_GLOBAL(0x00F440CC, uint8) = al;
 		}
 
@@ -893,7 +893,7 @@ static int ride_modify_entrance_or_exit(rct_map_element *mapElement, int x, int 
 int ride_modify_maze(rct_map_element *mapElement, int x, int y)
 {
 	RCT2_GLOBAL(0x00F440A7, uint8) = mapElement->properties.track.ride_index;
-	RCT2_GLOBAL(0x00F440A6, uint8) = 6;
+	RCT2_GLOBAL(0x00F440A6, uint8) = RIDE_CONSTRUCTION_STATE_6;
 	RCT2_GLOBAL(0x00F440A8, uint16) = x;
 	RCT2_GLOBAL(0x00F440AA, uint16) = y;
 	RCT2_GLOBAL(0x00F440AC, uint16) = mapElement->base_height * 8;
@@ -962,7 +962,7 @@ int ride_modify(rct_xy_element *input)
 		return 0;
 
 	RCT2_GLOBAL(0x00F440A7, uint8) = rideIndex;
-	RCT2_GLOBAL(0x00F440A6, uint8) = 3;
+	RCT2_GLOBAL(0x00F440A6, uint8) = RIDE_CONSTRUCTION_STATE_PLACE;
 	RCT2_GLOBAL(0x00F440A8, uint16) = x;
 	RCT2_GLOBAL(0x00F440AA, uint16) = y;
 	RCT2_GLOBAL(0x00F440AC, uint16) = z;
@@ -977,12 +977,12 @@ int ride_modify(rct_xy_element *input)
 	}
 
 	sub_6C9296();
-	if (RCT2_GLOBAL(0x00F440A6, uint8) == 1) {
+	if (RCT2_GLOBAL(0x00F440A6, uint8) == RIDE_CONSTRUCTION_STATE_FRONT) {
 		sub_6C84CE();
 		return 1;
 	}
 
-	RCT2_GLOBAL(0x00F440A6, uint8) = 3;
+	RCT2_GLOBAL(0x00F440A6, uint8) = RIDE_CONSTRUCTION_STATE_PLACE;
 	RCT2_GLOBAL(0x00F440A8, uint16) = x;
 	RCT2_GLOBAL(0x00F440AA, uint16) = y;
 	RCT2_GLOBAL(0x00F440AC, uint16) = z;
@@ -993,8 +993,8 @@ int ride_modify(rct_xy_element *input)
 
 	sub_6C93B8();
 
-	if (RCT2_GLOBAL(0x00F440A6, uint8) != 2) {
-		RCT2_GLOBAL(0x00F440A6, uint8) = 3;
+	if (RCT2_GLOBAL(0x00F440A6, uint8) != RIDE_CONSTRUCTION_STATE_BACK) {
+		RCT2_GLOBAL(0x00F440A6, uint8) = RIDE_CONSTRUCTION_STATE_PLACE;
 		RCT2_GLOBAL(0x00F440A8, uint16) = x;
 		RCT2_GLOBAL(0x00F440AA, uint16) = y;
 		RCT2_GLOBAL(0x00F440AC, uint16) = z;
@@ -1050,7 +1050,7 @@ int sub_6CC3FB(int rideIndex)
 	RCT2_GLOBAL(0x00F440B7, uint8) = 0;
 
 	RCT2_GLOBAL(RCT2_ADDRESS_TRACK_PREVIEW_ROTATION, uint8) = 0;
-	RCT2_GLOBAL(0x00F440A6, uint8) = 4;
+	RCT2_GLOBAL(0x00F440A6, uint8) = RIDE_CONSTRUCTION_STATE_4;
 	RCT2_GLOBAL(0x00F440B0, uint8) = 0;
 	RCT2_GLOBAL(0x00F440B1, uint8) = 0;
 	RCT2_GLOBAL(0x00F44159, uint8) = 0;
@@ -3018,7 +3018,7 @@ int ride_check_block_brakes(rct_xy_element *input, rct_xy_element *output)
 	trackElement = *input;
 	rideIndex = trackElement.element->properties.track.ride_index;
 	w = window_find_by_class(WC_RIDE_CONSTRUCTION);
-	if (w != NULL && RCT2_GLOBAL(0x00F440A6, uint8) != 0 && RCT2_GLOBAL(0x00F440A7, uint8) == rideIndex)
+	if (w != NULL && RCT2_GLOBAL(0x00F440A6, uint8) != RIDE_CONSTRUCTION_STATE_0 && RCT2_GLOBAL(0x00F440A7, uint8) == rideIndex)
 		sub_6C9627();
 
 	loopTrackElement = NULL;

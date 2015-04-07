@@ -276,6 +276,7 @@ static void window_ride_construction_update_possible_ride_configurations();
 
 #define _previousTrackPieceSlope					RCT2_GLOBAL(0x00F440A0, uint16)
 
+#define _rideConstructionState						RCT2_GLOBAL(0x00F440A6, uint8)
 #define _currentRideIndex							RCT2_GLOBAL(0x00F440A7, uint8)
 #define _currentTrackPieceX							RCT2_GLOBAL(0x00F440A8, uint16)
 #define _currentTrackPieceY							RCT2_GLOBAL(0x00F440AA, uint16)
@@ -362,7 +363,7 @@ rct_window *window_ride_construction_open()
 	RCT2_GLOBAL(0x00F440B7, uint8) = 0;
 
 	RCT2_GLOBAL(RCT2_ADDRESS_TRACK_PREVIEW_ROTATION, uint8) = 0;
-	RCT2_GLOBAL(0x00F440A6, uint8) = 4;
+	_rideConstructionState = RIDE_CONSTRUCTION_STATE_4;
 	RCT2_GLOBAL(0x00F440B0, uint8) = 0;
 	RCT2_GLOBAL(0x00F440B1, uint8) = 0;
 	RCT2_GLOBAL(0x00F44159, uint8) = 0;
@@ -485,11 +486,11 @@ static void window_ride_construction_mouseup_demolish(rct_window* w)
 	sub_6C9627();
 
 	RCT2_GLOBAL(0x00F440B8, uint8) = 3;
-	if (RCT2_GLOBAL(0x00F440A6, uint8) == 1) {
+	if (_rideConstructionState == RIDE_CONSTRUCTION_STATE_FRONT) {
 		//6C9C4F
 	}
 
-	if (RCT2_GLOBAL(0x00F440A6, uint8) != 2) {
+	if (_rideConstructionState != RIDE_CONSTRUCTION_STATE_BACK) {
 		//6c9cc4
 		int eax = _currentTrackPieceX,
 			ebx = _currentTrackPieceType || (_currentTrackPieceDirection << 8),
@@ -518,16 +519,16 @@ static void window_ride_construction_update(rct_window *w)
 		break;
 	}
 
-	if (RCT2_GLOBAL(0x00F440A6, uint8) == 4) {
+	if (_rideConstructionState == RIDE_CONSTRUCTION_STATE_4) {
 		if (!widget_is_active_tool(w, WIDX_ENTRANCE) && !widget_is_active_tool(w, WIDX_EXIT)) {
-			RCT2_GLOBAL(0x00F440A6, uint8) = RCT2_GLOBAL(0x00F440CC, uint8);
+			_rideConstructionState = RCT2_GLOBAL(0x00F440CC, uint8);
 			sub_6C84CE();
 		}
 	}
-	switch (RCT2_GLOBAL(0x00F440A6, uint8)) {
-	case 1:
-	case 2:
-	case 3:
+	switch (_rideConstructionState) {
+	case RIDE_CONSTRUCTION_STATE_FRONT:
+	case RIDE_CONSTRUCTION_STATE_BACK:
+	case RIDE_CONSTRUCTION_STATE_PLACE:
 		if (
 			(RCT2_GLOBAL(RCT2_ADDRESS_INPUT_FLAGS, uint32) & INPUT_FLAG_TOOL_ACTIVE) &&
 			RCT2_GLOBAL(RCT2_ADDRESS_TOOL_WINDOWCLASS, rct_windowclass) == WC_RIDE_CONSTRUCTION
@@ -628,7 +629,7 @@ static void window_ride_construction_paint()
 	// Draw cost
 	x = w->x + (widget->left + widget->right) / 2;
 	y = w->y + widget->bottom - 23;
-	if (RCT2_GLOBAL(0x00F440A6, uint8) != 4)
+	if (_rideConstructionState != RIDE_CONSTRUCTION_STATE_4)
 		gfx_draw_string_centred(dpi, 1407, x, y, 0, w);
 
 	y += 11;
@@ -922,14 +923,14 @@ void sub_6C84CE()
 	map_invalidate_map_selection_tiles();
 	RCT2_GLOBAL(RCT2_ADDRESS_MAP_SELECTION_FLAGS, uint16) |= 10;
 
-	switch (RCT2_GLOBAL(0x00F440A6, uint8)) {
-	case 0:
+	switch (_rideConstructionState) {
+	case RIDE_CONSTRUCTION_STATE_0:
 		trackDirection = _currentTrackPieceDirection;
 		trackType = 0;
 		originX = _currentTrackPieceX;
 		originY = _currentTrackPieceY;
 		break;
-	case 3:
+	case RIDE_CONSTRUCTION_STATE_PLACE:
 		trackDirection = _currentTrackPieceDirection;
 		trackType = _currentTrackPieceType;
 		originX = _currentTrackPieceX;
@@ -984,7 +985,7 @@ void sub_6C84CE()
 
 	w->hold_down_widgets = 0;
 	RCT2_GLOBAL(0x00F440D0, uint8) = 255;
-	if (RCT2_GLOBAL(0x00F440A6, uint8) == 3) {
+	if (_rideConstructionState == RIDE_CONSTRUCTION_STATE_PLACE) {
 		x = _currentTrackPieceX;
 		y = _currentTrackPieceY;
 		z = _currentTrackPieceZ;
@@ -1307,23 +1308,23 @@ void sub_6C84CE()
 		window_ride_construction_widgets[WIDX_NEXT_SECTION].type = WWT_FLATBTN;
 	}
 
-	switch (RCT2_GLOBAL(0x00F440A6, uint8)) {
-	case 1:
+	switch (_rideConstructionState) {
+	case RIDE_CONSTRUCTION_STATE_FRONT:
 		window_ride_construction_widgets[WIDX_CONSTRUCT].type = WWT_IMGBTN;
 		window_ride_construction_widgets[WIDX_NEXT_SECTION].type = WWT_EMPTY;
 		break;
-	case 2:
+	case RIDE_CONSTRUCTION_STATE_BACK:
 		window_ride_construction_widgets[WIDX_CONSTRUCT].type = WWT_IMGBTN;
 		window_ride_construction_widgets[WIDX_PREVIOUS_SECTION].type = WWT_EMPTY;
 		break;
-	case 4:
+	case RIDE_CONSTRUCTION_STATE_PLACE:
 		window_ride_construction_widgets[WIDX_CONSTRUCT].type = WWT_IMGBTN;
 		window_ride_construction_widgets[WIDX_DEMOLISH].type = WWT_EMPTY;
 		window_ride_construction_widgets[WIDX_NEXT_SECTION].type = WWT_EMPTY;
 		window_ride_construction_widgets[WIDX_PREVIOUS_SECTION].type = WWT_EMPTY;
 		window_ride_construction_widgets[WIDX_ROTATE].type = WWT_FLATBTN;
 		break;
-	case 5:
+	case RIDE_CONSTRUCTION_STATE_5:
 		window_ride_construction_widgets[WIDX_DEMOLISH].type = WWT_EMPTY;
 		window_ride_construction_widgets[WIDX_NEXT_SECTION].type = WWT_EMPTY;
 		window_ride_construction_widgets[WIDX_PREVIOUS_SECTION].type = WWT_EMPTY;
@@ -1473,9 +1474,9 @@ void sub_6C94D8()
 {
 	int x, y, z, direction, type, ebp, rideIndex, edxRS16;
 
-	switch (RCT2_GLOBAL(0x00F440A6, uint8)) {
-	case 1:
-	case 2:
+	switch (_rideConstructionState) {
+	case RIDE_CONSTRUCTION_STATE_FRONT:
+	case RIDE_CONSTRUCTION_STATE_BACK:
 		if (!(RCT2_GLOBAL(0x00F440B0, uint8) & 2)) {
 			if (sub_6CA2DF(&type, &direction, &rideIndex, &edxRS16)) {
 				sub_6C96C0();
@@ -1500,7 +1501,7 @@ void sub_6C94D8()
 		RCT2_GLOBAL(RCT2_ADDRESS_MAP_ARROW_Z, uint16) = z;
 		if (direction < 4)
 			direction += 4;
-		if (RCT2_GLOBAL(0x00F440A6, uint8) == 2)
+		if (_rideConstructionState == RIDE_CONSTRUCTION_STATE_BACK)
 			direction = 2;
 		RCT2_GLOBAL(RCT2_ADDRESS_MAP_ARROW_DIRECTION, uint8) = direction;
 		RCT2_GLOBAL(RCT2_ADDRESS_MAP_SELECTION_FLAGS, uint16) &= ~4;
@@ -1523,7 +1524,7 @@ void sub_6C94D8()
 		ebp = RCT2_GLOBAL(0x00F440B0, uint8) & 1 ? 2 : 1;
 		if (sub_6C683D(&x, &y, z, direction, type, 0, 0, ebp)) {
 			sub_6C96C0();
-			RCT2_GLOBAL(0x00F440A6, uint8) = 0;
+			_rideConstructionState = RIDE_CONSTRUCTION_STATE_0;
 		}
 		break;
 	case 6:
@@ -1602,8 +1603,8 @@ static void window_ride_construction_update_possible_ride_configurations()
 		}
 
 		int slope, bank;
-		if (RCT2_GLOBAL(0x00F440A6, uint8) != 1 && RCT2_GLOBAL(0x00F440A6, uint8) != 4) {
-			if (RCT2_GLOBAL(0x00F440A6, uint8) != 2)
+		if (_rideConstructionState != RIDE_CONSTRUCTION_STATE_FRONT && _rideConstructionState != RIDE_CONSTRUCTION_STATE_4) {
+			if (_rideConstructionState != RIDE_CONSTRUCTION_STATE_BACK)
 				continue;
 
 			if (ride_type_has_flag(ride->type, RIDE_TYPE_FLAG_SELLS_FOOD)) {

@@ -255,10 +255,17 @@ static void* window_ride_construction_events[] = {
 #pragma endregion
 
 static void window_ride_construction_mouseup_demolish(rct_window* w);
-static void window_ride_construction_draw_track_piece(rct_window *w, rct_drawpixelinfo *dpi);
-static bool sub_6CA2DF(int *trackType, int *trackDirection, int *rideIndex, int *edxRS16);
+static void window_ride_construction_draw_track_piece(
+	rct_window *w, rct_drawpixelinfo *dpi,
+	int rideIndex, int trackType, int trackRotation, int unknown
+);
 static void sub_6C6A77();
 void sub_6C94D8();
+static bool sub_6CA2DF(int *trackType, int *trackDirection, int *rideIndex, int *edxRS16);
+static void sub_6CBCE2(
+	int rideIndex, int trackType, int trackDirection, int edx,
+	int originX, int originY, int originZ
+);
 
 #define _currentTrackPrice				RCT2_GLOBAL(0x00F44070, money32)
 
@@ -587,16 +594,9 @@ static void window_ride_construction_paint()
 	if (widget->type == WWT_EMPTY)
 		return;
 
-	int trackType, trackRotation, rideIndex, edxRS16;
-	if (sub_6CA2DF(&trackType, &trackRotation, &rideIndex, &edxRS16))
+	int trackType, trackDirection, rideIndex, edxRS16;
+	if (sub_6CA2DF(&trackType, &trackDirection, &rideIndex, &edxRS16))
 		return;
-
-	RCT2_GLOBAL(0x00F44133, uint8) = rideIndex;
-	RCT2_GLOBAL(0x00F44134, uint8) = trackRotation;
-	RCT2_GLOBAL(0x00F44135, uint8) = trackType;
-	RCT2_GLOBAL(0x00F44136, uint16) = edxRS16;
-	rct_ride* ride = GET_RIDE(RCT2_GLOBAL(0x00F44133, uint8));
-	RCT2_GLOBAL(0x00F44064, uint32) = RCT2_GLOBAL(RCT2_ADDRESS_RIDE_FLAGS + ride->type * 8, uint32_t);
 
 	// Draw track piece
 	clipdpi = clip_drawpixelinfo(
@@ -607,7 +607,7 @@ static void window_ride_construction_paint()
 		widget->bottom - widget->top - 1
 	);
 	if (clipdpi != NULL) {
-		window_ride_construction_draw_track_piece(w, clipdpi);
+		window_ride_construction_draw_track_piece(w, clipdpi, rideIndex, trackType, trackDirection, edxRS16);
 		rct2_free(clipdpi);
 	}
 
@@ -640,18 +640,171 @@ static void window_ride_construction_maze_paint()
 	window_draw_widgets(w, dpi);
 }
 
-static void window_ride_construction_draw_track_piece(rct_window *w, rct_drawpixelinfo *dpi)
+/**
+ *
+ * rct2: 0x0068B2B7
+ */
+static void sub_68B2B7(int x, int y)
 {
+	RCT2_CALLPROC_X(0x0068B2B7, x, 0, y, 0, 0, 0, 0);
+}
+
+rct_map_element _tempTrackMapElement;
+rct_map_element _tempSideTrackMapElement = { 0x80, 0x8F, 128, 128, 0, 0, 0, 0 };
+rct_map_element *_backupMapElementArrays[5];
+
+/**
+ *
+ * rct2: 0x006CBCE2
+ * bh: trackDirection
+ * dl: rideIndex
+ * dh: trackType
+ */
+static void sub_6CBCE2(
+	int rideIndex, int trackType, int trackDirection, int edx,
+	int originX, int originY, int originZ
+) {
+	// RCT2_CALLPROC_X(
+	// 	0x006CBCE2,
+	// 	originX,
+	// 	(trackDirection & 0xFF) | (RCT2_GLOBAL(0x00F44134, uint8) << 8),
+	// 	originY,
+	// 	(edx & 0xFFFF0000) | (trackType << 8) | rideIndex,
+	// 	0,
+	// 	originZ,
+	// 	0
+	// ); return;
+
+	rct_ride *ride;
 	rct_preview_track *trackBlock;
-	int ebx, ecx;
+	int preserve_word_141E9E4;
+	int x, y, baseZ, clearanceZ, offsetX, offsetY;
+	uint64 preserve_map_size_vars;
 
-	rct_ride* ride = GET_RIDE(RCT2_GLOBAL(0x00F44133, uint8));
+	preserve_word_141E9E4 = RCT2_GLOBAL(0x0141E9E4, uint16);
+	RCT2_GLOBAL(0x0141E9E4, uint16) = 0;
+	trackDirection &= 3;
 
-	ecx = RCT2_GLOBAL(0x00F44135, uint8);
-	if (ride_type_has_flag(ride->type, RIDE_TYPE_FLAG_SELLS_FOOD))
-		trackBlock = RCT2_ADDRESS(0x00994A38, rct_preview_track*)[ecx];
-	else
-		trackBlock = RCT2_ADDRESS(0x00994638, rct_preview_track*)[ecx];
+	RCT2_GLOBAL(0x00EE7880, uint32) = 0x00F1A4CC;
+	sub_0x68615B(0x00EE788C);
+
+	ride = GET_RIDE(rideIndex);
+
+	preserve_map_size_vars = RCT2_GLOBAL(RCT2_ADDRESS_MAP_SIZE_UNITS, uint64);
+
+	RCT2_GLOBAL(RCT2_ADDRESS_MAP_SIZE_UNITS, uint16) = 255 * 32;
+	RCT2_GLOBAL(RCT2_ADDRESS_MAP_MAXIMUM_X_Y, uint16) = (255 * 32) + 286;
+	RCT2_GLOBAL(RCT2_ADDRESS_MAP_SIZE, uint16) = 256;
+	RCT2_GLOBAL(0x01358836, uint16) = (256 * 32) - 1;
+
+	trackBlock = ride_type_has_flag(ride->type, RIDE_TYPE_FLAG_SELLS_FOOD) ?
+		RCT2_ADDRESS(0x00994A38, rct_preview_track*)[trackType] :
+		RCT2_ADDRESS(0x00994638, rct_preview_track*)[trackType];
+
+	while (trackBlock->var_00 != 255) {
+		int bl = trackBlock->var_08;
+		int bh;
+		switch (trackDirection) {
+		case 0:
+			offsetX =  trackBlock->x;
+			offsetY =  trackBlock->y;
+			break;
+		case 1:
+			offsetX =  trackBlock->y;
+			offsetY = -trackBlock->x;
+			bl = rol8(bl, 1);
+			bh = bl;
+			bh = ror8(bh, 4);
+			bl &= 0xEE;
+			bh &= 0x11;
+			bl |= bh;
+			break;
+		case 2:
+			offsetX = -trackBlock->x;
+			offsetY = -trackBlock->y;
+			bl = rol8(bl, 2);
+			bh = bl;
+			bh = ror8(bh, 4);
+			bl &= 0xCC;
+			bh &= 0x33;
+			bl |= bh;
+			break;
+		case 3:
+			offsetX = -trackBlock->y;
+			offsetY =  trackBlock->x;
+			bl = rol8(bl, 3);
+			bh |= bl;
+			bh = ror8(bh, 4);
+			bl &= 0x88;
+			bh &= 0x77;
+			bl |= bh;
+			break;
+		}
+		x = originX + offsetX;
+		y = originY + offsetY;
+		baseZ = (originZ + trackBlock->z) >> 3;
+		clearanceZ = ((trackBlock->var_07 + RCT2_GLOBAL(0x0097D219 + (ride->type * 8), uint8)) >> 3) + baseZ + 4;
+
+		rct_map_element *hmmm = map_get_first_element_at(x >> 5, y >> 5);
+
+		int tileX = x >> 5;
+		int tileY = y >> 5;
+
+		// Replace map elements with temporary ones containing track
+		_backupMapElementArrays[0] = map_get_first_element_at(tileX + 0, tileY + 0);
+		_backupMapElementArrays[1] = map_get_first_element_at(tileX + 1, tileY + 0);
+		_backupMapElementArrays[2] = map_get_first_element_at(tileX - 1, tileY + 0);
+		_backupMapElementArrays[3] = map_get_first_element_at(tileX + 0, tileY + 1);
+		_backupMapElementArrays[4] = map_get_first_element_at(tileX + 0, tileY - 1);
+		map_set_tile_elements(tileX + 0, tileY + 0, &_tempTrackMapElement);
+		map_set_tile_elements(tileX + 1, tileY + 0, &_tempSideTrackMapElement);
+		map_set_tile_elements(tileX - 1, tileY + 0, &_tempSideTrackMapElement);
+		map_set_tile_elements(tileX + 0, tileY + 1, &_tempSideTrackMapElement);
+		map_set_tile_elements(tileX + 0, tileY - 1, &_tempSideTrackMapElement);
+
+		// Set the temporary track element
+		_tempTrackMapElement.type = trackDirection | MAP_ELEMENT_TYPE_TRACK | (edx & 0x10000 ? 0x80 : 0);
+		_tempTrackMapElement.flags = (bl & 0x0F) | MAP_ELEMENT_FLAG_LAST_TILE;
+		_tempTrackMapElement.base_height = baseZ;
+		_tempTrackMapElement.clearance_height = clearanceZ;
+		_tempTrackMapElement.properties.track.type = trackType;
+		_tempTrackMapElement.properties.track.sequence = trackBlock->var_00;
+		_tempTrackMapElement.properties.track.colour = (edx & 0x20000 ? 4 : 0);
+		_tempTrackMapElement.properties.track.ride_index = rideIndex;
+
+		// Draw this map tile
+		sub_68B2B7(x, y);
+
+		// Restore map elements
+		map_set_tile_elements(tileX + 0, tileY + 0, &_backupMapElementArrays[0]);
+		map_set_tile_elements(tileX + 1, tileY + 0, &_backupMapElementArrays[1]);
+		map_set_tile_elements(tileX - 1, tileY + 0, &_backupMapElementArrays[2]);
+		map_set_tile_elements(tileX + 0, tileY + 1, &_backupMapElementArrays[3]);
+		map_set_tile_elements(tileX + 0, tileY - 1, &_backupMapElementArrays[4]);
+
+		trackBlock++;
+	}
+
+	RCT2_GLOBAL(RCT2_ADDRESS_MAP_SIZE_UNITS, uint64) = preserve_map_size_vars;
+
+	RCT2_CALLPROC_X(0x00688217, 0, 0, 0, 0, 0, 0, 0);
+	sub_688485();
+
+	RCT2_GLOBAL(0x0141E9E4, uint16) = preserve_word_141E9E4;
+}
+
+static void window_ride_construction_draw_track_piece(
+	rct_window *w, rct_drawpixelinfo *dpi,
+	int rideIndex, int trackType, int trackDirection, int unknown
+) {
+	rct_preview_track *trackBlock;
+	rct_ride *ride;
+
+	ride = GET_RIDE(rideIndex);
+
+	trackBlock = ride_type_has_flag(ride->type, RIDE_TYPE_FLAG_SELLS_FOOD) ?
+		RCT2_ADDRESS(0x00994A38, rct_preview_track*)[trackType] :
+		RCT2_ADDRESS(0x00994638, rct_preview_track*)[trackType];
 
 	while ((trackBlock + 1)->var_00 != 0xFF)
 		trackBlock++;
@@ -665,7 +818,7 @@ static void window_ride_construction_draw_track_piece(rct_window *w, rct_drawpix
 	}
 
 	short tmp;
-	switch (RCT2_GLOBAL(0x00F44134, uint8_t) & 3) {
+	switch (trackDirection & 3) {
 	case 1:
 		tmp = x;
 		x = y;
@@ -684,17 +837,14 @@ static void window_ride_construction_draw_track_piece(rct_window *w, rct_drawpix
 		break;
 	}
 	//this is actually case 0, but the other cases all jump to it
-	x /= 2;
-	y /= 2;
-	x += 4112;
-	y += 4112;
-	z += 1024;
-	ebx = RCT2_GLOBAL(0x00F44135, uint8_t);
-	short bx;
-	if (ride_type_has_flag(ride->type, RIDE_TYPE_FLAG_SELLS_FOOD))
-		bx = RCT2_GLOBAL(0x009984A2 + ebx * 8, uint8_t);
-	else
-		bx = RCT2_GLOBAL(0x00997CA2 + ebx * 8, uint8_t);
+	x = 4112 + (x / 2);
+	y = 4112 + (y / 2);
+	z = 1024 + z;
+
+	short bx = ride_type_has_flag(ride->type, RIDE_TYPE_FLAG_SELLS_FOOD) ?
+		RCT2_GLOBAL(0x009984A2 + trackType * 8, uint8) :
+		RCT2_GLOBAL(0x00997CA2 + trackType * 8, uint8);
+
 	z -= bx;
 	int start_x = x;
 	switch (RCT2_GLOBAL(RCT2_ADDRESS_CURRENT_ROTATION, uint32_t)) {
@@ -717,20 +867,25 @@ static void window_ride_construction_draw_track_piece(rct_window *w, rct_drawpix
 	}
 	dpi->x += x - dpi->width / 2;
 	dpi->y += y - dpi->height / 2 - 16;
-	RCT2_GLOBAL(0x140E9A8, rct_drawpixelinfo*) = dpi;
-	uint32_t d = RCT2_GLOBAL(0xF44136, int16_t) << 16;
-	d |= RCT2_GLOBAL(0x00F44133, uint8_t);
-	d |= RCT2_GLOBAL(0x00F44135, uint8_t) << 8;
+	RCT2_GLOBAL(0x0140E9A8, rct_drawpixelinfo*) = dpi;
+	uint32_t d = unknown << 16;
+	d |= rideIndex;
+	d |= trackType << 8;
+
+	sub_6CBCE2(rideIndex, trackType, trackDirection, d, 4096, 4096, 1024);
+
+	/*
 	RCT2_CALLPROC_X(
 		0x006CBCE2,
-		0x1000,
+		4096,
 		(((uint16_t)bx) & 0xFF) | (RCT2_GLOBAL(0xF44134, uint8_t) << 8),
-		0x1000,
+		4096,
 		d,
 		dpi->width,
-		0x400,
+		1024,
 		dpi->height
 	);
+	*/
 }
 
 /**

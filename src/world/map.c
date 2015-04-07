@@ -94,12 +94,20 @@ void map_element_iterator_restart_for_tile(map_element_iterator *it)
 
 rct_map_element *map_get_first_element_at(int x, int y)
 {
-	if (x < 0 || y < 0 || x > 255 || y > 255)
-	{ 
-		log_error("Trying to access element outside of range"); 
+	if (x < 0 || y < 0 || x > 255 || y > 255) { 
+		log_error("Trying to access element outside of range");
 		return NULL;
 	}
 	return TILE_MAP_ELEMENT_POINTER(x + y * 256);
+}
+
+void map_set_tile_elements(int x, int y, rct_map_element *elements)
+{
+	if (x < 0 || y < 0 || x > 255 || y > 255) { 
+		log_error("Trying to access element outside of range");
+		return;
+	}
+	TILE_MAP_ELEMENT_POINTER(x + y * 256) = elements;
 }
 
 int map_element_is_last_for_tile(rct_map_element *element)

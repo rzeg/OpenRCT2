@@ -244,6 +244,7 @@ extern rct_xy16 *gMapSelectionTiles;
 void map_init(int size);
 void map_update_tile_pointers();
 rct_map_element *map_get_first_element_at(int x, int y);
+void map_set_tile_elements(int x, int y, rct_map_element *elements);
 int map_element_is_last_for_tile(rct_map_element *element);
 int map_element_get_type(rct_map_element *element);
 int map_element_get_terrain(rct_map_element *element);

@@ -103,4 +103,7 @@ int viewport_interaction_get_item_right(int x, int y, viewport_interaction_info 
 int viewport_interaction_right_over(int x, int y);
 int viewport_interaction_right_click(int x, int y);
 
+void sub_0x68615B(int ebp);
+void sub_688485();
+
 #endif

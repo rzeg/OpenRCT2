@@ -1272,7 +1272,151 @@ void sub_6C84CE()
 		w->hold_down_widgets |= (1 << WIDX_BANK_STRAIGHT) | (1 << WIDX_BANK_RIGHT);
 	}
 
+	window_ride_construction_widgets[WIDX_BANKING_GROUPBOX].right = 162;
+	window_ride_construction_widgets[WIDX_SEAT_ROTATION_GROUPBOX].type = 0;
+	window_ride_construction_widgets[WIDX_SEAT_ROTATION_ANGLE_SPINNER].type = 0;
+	window_ride_construction_widgets[WIDX_SEAT_ROTATION_ANGLE_SPINNER_UP].type = 0;
+	window_ride_construction_widgets[WIDX_SEAT_ROTATION_ANGLE_SPINNER_DOWN].type = 0;
+	if (
+		(edi == RIDE_TYPE_MULTI_DIMENSION_ROLLER_COASTER || edi == RIDE_TYPE_38) &&
+		RCT2_GLOBAL(0x00F440D0, uint8) != 99 &&
+		_previousTrackPieceSlope != 355
+	) {
+		window_ride_construction_widgets[WIDX_SEAT_ROTATION_GROUPBOX].type = WWT_GROUPBOX;
+		window_ride_construction_widgets[WIDX_SEAT_ROTATION_ANGLE_SPINNER].type = WWT_SPINNER;
+		window_ride_construction_widgets[WIDX_SEAT_ROTATION_ANGLE_SPINNER_UP].type = WWT_DROPDOWN_BUTTON;
+		window_ride_construction_widgets[WIDX_SEAT_ROTATION_ANGLE_SPINNER_DOWN].type = WWT_DROPDOWN_BUTTON;
+		window_ride_construction_widgets[WIDX_BANKING_GROUPBOX].right = 92;
+		if (window_ride_construction_widgets[WIDX_BANK_LEFT].type == WWT_SPINNER) {
+			for (int i = WIDX_BANK_LEFT; i <= WIDX_BANK_RIGHT; i++) {
+				window_ride_construction_widgets[i].left -= 36;
+				window_ride_construction_widgets[i].right -= 36;
+			}
+		}
+	}
 
+	uint64 pressedWidgets = w->pressed_widgets & 0x7D80003F;
+	window_ride_construction_widgets[WIDX_CONSTRUCT].type = WWT_EMPTY;
+	window_ride_construction_widgets[WIDX_DEMOLISH].type = WWT_FLATBTN;
+	window_ride_construction_widgets[WIDX_ROTATE].type = WWT_EMPTY;
+	if (ride_type_has_flag(edi, RIDE_TYPE_FLAG_8)) {
+		window_ride_construction_widgets[WIDX_PREVIOUS_SECTION].type = WWT_EMPTY;
+		window_ride_construction_widgets[WIDX_NEXT_SECTION].type = WWT_EMPTY;
+	} else {
+		window_ride_construction_widgets[WIDX_PREVIOUS_SECTION].type = WWT_FLATBTN;
+		window_ride_construction_widgets[WIDX_NEXT_SECTION].type = WWT_FLATBTN;
+	}
+
+	switch (RCT2_GLOBAL(0x00F440A6, uint8)) {
+	case 1:
+		window_ride_construction_widgets[WIDX_CONSTRUCT].type = WWT_IMGBTN;
+		window_ride_construction_widgets[WIDX_NEXT_SECTION].type = WWT_EMPTY;
+		break;
+	case 2:
+		window_ride_construction_widgets[WIDX_CONSTRUCT].type = WWT_IMGBTN;
+		window_ride_construction_widgets[WIDX_PREVIOUS_SECTION].type = WWT_EMPTY;
+		break;
+	case 4:
+		window_ride_construction_widgets[WIDX_CONSTRUCT].type = WWT_IMGBTN;
+		window_ride_construction_widgets[WIDX_DEMOLISH].type = WWT_EMPTY;
+		window_ride_construction_widgets[WIDX_NEXT_SECTION].type = WWT_EMPTY;
+		window_ride_construction_widgets[WIDX_PREVIOUS_SECTION].type = WWT_EMPTY;
+		window_ride_construction_widgets[WIDX_ROTATE].type = WWT_FLATBTN;
+		break;
+	case 5:
+		window_ride_construction_widgets[WIDX_DEMOLISH].type = WWT_EMPTY;
+		window_ride_construction_widgets[WIDX_NEXT_SECTION].type = WWT_EMPTY;
+		window_ride_construction_widgets[WIDX_PREVIOUS_SECTION].type = WWT_EMPTY;
+		break;
+	default:
+		w->pressed_widgets = pressedWidgets;
+		window_invalidate(w);
+		return;
+	}
+
+	int widgetIndex;
+	switch (_previousTrackPieceSlope) {
+	case 0:
+		widgetIndex = WIDX_STRAIGHT;
+		break;
+	case 1:
+		widgetIndex = WIDX_LEFT_CURVE;
+		break;
+	case 2:
+		widgetIndex = WIDX_RIGHT_CURVE;
+		break;
+	case 3:
+		widgetIndex = WIDX_LEFT_CURVE_SMALL;
+		break;
+	case 4:
+		widgetIndex = WIDX_RIGHT_CURVE_SMALL;
+		break;
+	case 5:
+		widgetIndex = WIDX_LEFT_CURVE_VERY_SMALL;
+		break;
+	case 6:
+		widgetIndex = WIDX_RIGHT_CURVE_VERY_SMALL;
+		break;
+	case 7:
+		widgetIndex = WIDX_LEFT_CURVE_LARGE;
+		break;
+	case 8:
+		widgetIndex = WIDX_RIGHT_CURVE_LARGE;
+		break;
+	default:
+		widgetIndex = WIDX_SPECIAL_TRACK_DROPDOWN;
+		break;
+	}
+	pressedWidgets |= (1ULL << widgetIndex);
+
+	switch (RCT2_GLOBAL(0x00F440B2, uint8)) {
+	case 8:
+	case 10:
+		widgetIndex = WIDX_SLOPE_DOWN_STEEP;
+		break;
+	case 6:
+		widgetIndex = WIDX_SLOPE_DOWN;
+		break;
+	case 2:
+		widgetIndex = WIDX_SLOPE_UP;
+		break;
+	case 4:
+	case 18:
+		widgetIndex = WIDX_SLOPE_UP_STEEP;
+		break;
+	default:
+		widgetIndex = WIDX_LEVEL;
+		break;
+	}
+	pressedWidgets |= (1ULL << widgetIndex);
+
+	if (RCT2_GLOBAL(0x00F440D3, uint8) == 0) {
+		if (ride_type_has_flag(edi, RIDE_TYPE_FLAG_12)) {
+			if (RCT2_GLOBAL(0x00F440B5, uint8) & 1) {
+				w->pressed_widgets |= (1ULL << WIDX_O_TRACK);
+			} else {
+				w->pressed_widgets |= (1ULL << WIDX_U_TRACK);
+			}
+		}
+		switch (_previousTrackBankStart) {
+		case TRACK_BANK_LEFT:
+			widgetIndex = WIDX_BANK_LEFT;
+			break;
+		case TRACK_BANK_NONE:
+			widgetIndex = WIDX_BANK_STRAIGHT;
+			break;
+		default:
+			widgetIndex = WIDX_BANK_RIGHT;
+			break;
+		}
+		pressedWidgets |= (1ULL << widgetIndex);
+	}
+
+	if (RCT2_GLOBAL(0x00F440B4, uint8) & 1)
+		pressedWidgets |= (1 << WIDX_CHAIN_LIFT);
+
+	w->pressed_widgets = pressedWidgets;
+	window_invalidate(w);
 }
 
 /**

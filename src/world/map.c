@@ -120,6 +120,11 @@ int map_element_get_type(rct_map_element *element)
 	return element->type & MAP_ELEMENT_TYPE_MASK;
 }
 
+int map_element_get_direction(rct_map_element *element)
+{
+	return element->type & MAP_ELEMENT_DIRECTION_MASK;
+}
+
 int map_element_get_terrain(rct_map_element *element)
 {
 	int terrain = (element->properties.surface.terrain >> 5) & 7;

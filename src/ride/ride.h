@@ -697,9 +697,9 @@ enum {
 	RIDE_CONSTRUCTION_STATE_0,
 	RIDE_CONSTRUCTION_STATE_FRONT,
 	RIDE_CONSTRUCTION_STATE_BACK,
+	RIDE_CONSTRUCTION_STATE_SELECTED,
 	RIDE_CONSTRUCTION_STATE_PLACE,
-	RIDE_CONSTRUCTION_STATE_4,
-	RIDE_CONSTRUCTION_STATE_5,
+	RIDE_CONSTRUCTION_STATE_ENTRANCE_EXIT,
 	RIDE_CONSTRUCTION_STATE_6,
 	RIDE_CONSTRUCTION_STATE_7,
 	RIDE_CONSTRUCTION_STATE_8
@@ -765,7 +765,7 @@ void ride_breakdown_add_news_item(int rideIndex);
 rct_peep *ride_find_closest_mechanic(rct_ride *ride, int forInspection);
 int sub_6CC3FB(int rideIndex);
 void sub_6C9627();
-int sub_6C683D(int* x, int* y, int z, int direction, int type, int esi, int edi, int ebp);
+bool sub_6C683D(int x, int y, int z, int direction, int type, int flags, int colourRelated, rct_xy_element *outElement);
 void ride_set_map_tooltip(rct_map_element *mapElement);
 int ride_music_params_update(sint16 x, sint16 y, sint16 z, uint8 rideIndex, uint16 sampleRate, uint32 position, uint8 *tuneId);
 void ride_music_update_final();

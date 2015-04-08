@@ -1240,3 +1240,24 @@ static void map_set_grass_length(int x, int y, rct_map_element *mapElement, int 
 	z1 = z0 + 16;
 	sub_6EC847(x, y, z0, z1);
 }
+
+int map_get_highest_z(int tileX, int tileY)
+{
+	rct_map_element *mapElement;
+	int z;
+
+	mapElement = map_get_surface_element_at(tileX, tileY);
+	if (mapElement == NULL)
+		return -1;
+
+	z = mapElement->base_height * 8;
+
+	// Raise z so that is above highest point of land and water on tile
+	if ((mapElement->properties.surface.slope & 0x0F) != 0)
+		z += 16;
+	if ((mapElement->properties.surface.slope & 0x10) != 0)
+		z += 16;
+
+	z = max(z, (mapElement->properties.surface.terrain & 0x1F) * 16);
+	return z;
+}

@@ -292,5 +292,6 @@ void map_element_iterator_restart_for_tile(map_element_iterator *it);
 
 void map_remove_intersecting_walls(int x, int y, int z0, int z1, int direction);
 void map_update_tiles();
+int map_get_highest_z(int tileX, int tileY);
 
 #endif

@@ -764,9 +764,75 @@ int sub_6C683D(int* x, int* y, int z, int direction, int type, int esi, int edi,
 	return RCT2_CALLFUNC_X(0x006C683D, x, &ebx, y, &z, &esi, &edi, &ebp)&0x100;
 }
 
+rct_map_element *sub_6C6096(int x, int y, int z, int direction)
+{
+	int eax, ebx, ecx, edx, esi, edi, ebp;
+	eax = x;
+	ecx = y;
+	edx = z;
+	ebx = direction;
+	if (RCT2_CALLFUNC_X(0x006C96C0, &eax, &ebx, &ecx, &edx, &esi, &edi, &ebp) & 0x100)
+		return NULL;
+	
+	return (rct_map_element*)esi;
+}
+
 void sub_6C96C0()
 {
-	RCT2_CALLPROC_X(0x006C96C0, 0, 0, 0, 0, 0, 0, 0);
+	// RCT2_CALLPROC_X(0x006C96C0, 0, 0, 0, 0, 0, 0, 0); return;
+
+	rct_ride *ride;
+	rct_map_element *trackElement;
+	int rideIndex, x, y, z, direction;
+
+	if (RCT2_GLOBAL(0x00F440B0, uint8) & 4) {
+		RCT2_GLOBAL(0x00F440B0, uint8) &= ~4;
+		game_do_command(
+			RCT2_GLOBAL(0x00F440BF, uint16),
+			0,
+			RCT2_GLOBAL(0x00F440C1, uint16),
+			RCT2_GLOBAL(0x00F440A7, uint8),
+			GAME_COMMAND_13,
+			RCT2_GLOBAL(0x00F440C4, uint8),
+			0
+		);
+	}
+	if (RCT2_GLOBAL(0x00F440B0, uint8) & 2) {
+		RCT2_GLOBAL(0x00F440B0, uint8) &= ~2;
+
+		rideIndex = RCT2_GLOBAL(0x00F440A7, uint8);
+		RCT2_GLOBAL(0x00F441D2, uint8) = rideIndex;
+		
+		x = RCT2_GLOBAL(0x00F440C5, uint16);
+		y = RCT2_GLOBAL(0x00F440C7, uint16);
+		z = RCT2_GLOBAL(0x00F440C9, uint16);
+
+		ride = GET_RIDE(rideIndex);
+		if (ride->type == RIDE_TYPE_MAZE) {
+			game_do_command(x     , 41 | (0 << 8), y     , rideIndex | (2 << 8), GAME_COMMAND_38, z, 0);
+			game_do_command(x     , 41 | (1 << 8), y + 16, rideIndex | (2 << 8), GAME_COMMAND_38, z, 0);
+			game_do_command(x + 16, 41 | (2 << 8), y + 16, rideIndex | (2 << 8), GAME_COMMAND_38, z, 0);
+			game_do_command(x + 16, 41 | (3 << 8), y     , rideIndex | (2 << 8), GAME_COMMAND_38, z, 0);
+		} else {
+			direction = RCT2_GLOBAL(0x00F440CB, uint8);
+			if (!(direction & 4)) {
+				x -= TileDirectionDelta[direction].x;
+				y -= TileDirectionDelta[direction].y;
+			}
+			trackElement = sub_6C6096(x, y, z, direction);
+			if (trackElement != NULL) {
+				game_do_command(
+					x,
+					105 | (direction & 3),
+					y,
+					trackElement->properties.track.type | ((trackElement->properties.track.sequence & 0x0F) << 8),
+					GAME_COMMAND_4,
+					z,
+					0
+				);
+			}
+		}
+	}
 }
 
 void sub_6C9627()

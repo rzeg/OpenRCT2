@@ -257,7 +257,8 @@ static void* window_ride_construction_events[] = {
 static void window_ride_construction_mouseup_demolish(rct_window* w);
 static void window_ride_construction_draw_track_piece(
 	rct_window *w, rct_drawpixelinfo *dpi,
-	int rideIndex, int trackType, int trackRotation, int unknown
+	int rideIndex, int trackType, int trackRotation, int unknown,
+	int width, int height
 );
 static void window_ride_construction_update_enabled_track_pieces();
 void sub_6C94D8();
@@ -601,7 +602,7 @@ static void window_ride_construction_paint()
 	rct_window *w;
 	rct_drawpixelinfo *dpi, *clipdpi;
 	rct_widget *widget;
-	int x, y;
+	int x, y, width, height;
 
 	window_paint_get_registers(w, dpi);
 
@@ -616,15 +617,13 @@ static void window_ride_construction_paint()
 		return;
 
 	// Draw track piece
-	clipdpi = clip_drawpixelinfo(
-		dpi,
-		w->x + widget->left + 1,
-		widget->right - widget->left - 1,
-		w->y + widget->top + 1,
-		widget->bottom - widget->top - 1
-	);
+	x = w->x + widget->left + 1;
+	y = w->y + widget->top + 1;
+	width = widget->right - widget->left - 1;
+	height = widget->bottom - widget->top - 1;
+	clipdpi = clip_drawpixelinfo(dpi, x, width, y, height);
 	if (clipdpi != NULL) {
-		window_ride_construction_draw_track_piece(w, clipdpi, rideIndex, trackType, trackDirection, edxRS16);
+		window_ride_construction_draw_track_piece(w, clipdpi, rideIndex, trackType, trackDirection, edxRS16, width, height);
 		rct2_free(clipdpi);
 	}
 
@@ -668,7 +667,8 @@ static void sub_68B2B7(int x, int y)
 
 static void window_ride_construction_draw_track_piece(
 	rct_window *w, rct_drawpixelinfo *dpi,
-	int rideIndex, int trackType, int trackDirection, int unknown
+	int rideIndex, int trackType, int trackDirection, int unknown,
+	int width, int height
 ) {
 	rct_preview_track *trackBlock;
 	rct_ride *ride;
@@ -738,8 +738,8 @@ static void window_ride_construction_draw_track_piece(
 		y = (-y + start_x) / 2 - z;
 		break;
 	}
-	dpi->x += x - dpi->width / 2;
-	dpi->y += y - dpi->height / 2 - 16;
+	dpi->x += x - width / 2;
+	dpi->y += y - height / 2 - 16;
 	RCT2_GLOBAL(0x0140E9A8, rct_drawpixelinfo*) = dpi;
 	uint32_t d = unknown << 16;
 	d |= rideIndex;
@@ -1055,15 +1055,15 @@ void sub_6C94D8()
 		x = _currentTrackPieceX;
 		y = _currentTrackPieceY;
 		z = _currentTrackPieceZ;
-		direction = _currentTrackPieceDirection & 3;
+		direction = _currentTrackPieceDirection;
 		type = _currentTrackPieceType;
 		RCT2_GLOBAL(RCT2_ADDRESS_MAP_ARROW_X, uint16) = x;
 		RCT2_GLOBAL(RCT2_ADDRESS_MAP_ARROW_Y, uint16) = y;
 		RCT2_GLOBAL(RCT2_ADDRESS_MAP_ARROW_Z, uint16) = z;
-		if (direction < 4)
+		if (direction >= 4)
 			direction += 4;
 		if (_rideConstructionState == RIDE_CONSTRUCTION_STATE_BACK)
-			direction = 2;
+			direction ^= 2;
 		RCT2_GLOBAL(RCT2_ADDRESS_MAP_ARROW_DIRECTION, uint8) = direction;
 		RCT2_GLOBAL(RCT2_ADDRESS_MAP_SELECTION_FLAGS, uint16) &= ~4;
 		if (RCT2_GLOBAL(0x00F440B0, uint8) & 1)

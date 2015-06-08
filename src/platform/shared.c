@@ -49,7 +49,9 @@ int gResolutionsAllowAnyAspectRatio = 0;
 SDL_Window *gWindow = NULL;
 SDL_Renderer *gRenderer = NULL;
 SDL_Texture *gBufferTexture = NULL;
+SDL_PixelFormat *gBufferTextureFormat = NULL;
 SDL_Color gPalette[256];
+uint32 gPaletteHWMapped[256];
 
 static SDL_Surface *_surface;
 static SDL_Palette *_palette;
@@ -180,25 +182,25 @@ void platform_draw()
 		void *pixels;
 		int pitch;
 		if (SDL_LockTexture(gBufferTexture, NULL, &pixels, &pitch) == 0) {
-			uint8 *dst = pixels;
 			uint8 *src = (uint8*)_screenBuffer;
-
-			for (int y = 0; y < height; y++) {
-				for (int x = 0; x < width; x++) {
-					uint8 paletteIndex = *src;
-					SDL_Color colour = gPalette[paletteIndex];
-
-					dst[0] = 255;
-					dst[1] = colour.b;
-					dst[2] = colour.g;
-					dst[3] = colour.r;
-
-					src += 1;
-					dst += 4;
+			int padding = pitch - (width * 4);
+			if (pitch == width * 4) {
+				uint32 *dst = pixels;
+				for (int i = width * height; i > 0; i--) { *dst++ = *(uint32 *)(&gPaletteHWMapped[*src++]); }
+			} else
+			if (pitch == (width * 2) + padding) {
+				uint16 *dst = pixels;
+				for (int y = height; y > 0; y++) {
+					for (int x = width; x > 0; x--) { *dst++ = *(uint16 *)(&gPaletteHWMapped[*src++]); }
+					dst = (uint16*)(((uint8 *)dst) + padding);
 				}
-
-				src += _screenBufferPitch - width;
-				dst += pitch - (width * 4);
+			} else
+			if (pitch == width + padding) {
+				uint8 *dst = pixels;
+				for (int y = height; y > 0; y++) {
+					for (int x = width; x > 0; x--) { *dst++ = *(uint8 *)(&gPaletteHWMapped[*src++]); }
+					dst += padding;
+				}
 			}
 			SDL_UnlockTexture(gBufferTexture);
 		}
@@ -274,6 +276,9 @@ void platform_update_palette(char* colours, int start_index, int num_colours)
 		gPalette[i].b = colours[0];
 		gPalette[i].a = 0;
 		colours += 4;
+		if (gBufferTextureFormat != NULL) {
+			gPaletteHWMapped[i] = SDL_MapRGB(gBufferTextureFormat, gPalette[i].r, gPalette[i].g, gPalette[i].b);
+		}
 	}
 
 	if (!gOpenRCT2Headless && !gConfigGeneral.hardware_display) {
@@ -391,6 +396,7 @@ void platform_process_messages()
 				gTextInputCursorPosition--;
 				gTextInputLength--;
 				console_refresh_caret();
+				window_update_textbox();
 			}
 			if (e.key.keysym.sym == SDLK_END){
 				gTextInputCursorPosition = gTextInputLength;
@@ -405,6 +411,10 @@ void platform_process_messages()
 				gTextInput[gTextInputMaxLength - 1] = '\0';
 				gTextInputLength--;
 				console_refresh_caret();
+				window_update_textbox();
+			}
+			if (e.key.keysym.sym == SDLK_RETURN && gTextInput) {
+				window_cancel_textbox();
 			}
 			if (e.key.keysym.sym == SDLK_LEFT && gTextInput){
 				if (gTextInputCursorPosition) gTextInputCursorPosition--;
@@ -434,7 +444,7 @@ void platform_process_messages()
 
 						gTextInputCursorPosition++;
 					}
-
+					window_update_textbox();
 				}
 			}
 			break;
@@ -481,6 +491,7 @@ void platform_process_messages()
 
 				gTextInputCursorPosition++;
 				console_refresh_caret();
+				window_update_textbox();
 			}
 			break;
 		default:
@@ -727,8 +738,24 @@ void platform_refresh_video()
 
 		if (gBufferTexture != NULL)
 			SDL_DestroyTexture(gBufferTexture);
+
+		if (gBufferTextureFormat != NULL)
+			SDL_FreeFormat(gBufferTextureFormat);
+
+		SDL_RendererInfo rendererinfo;
+		SDL_GetRendererInfo(gRenderer, &rendererinfo);
+		Uint32 pixelformat = SDL_PIXELFORMAT_UNKNOWN;
+		for(unsigned int i = 0; i < rendererinfo.num_texture_formats; i++){
+			Uint32 format = rendererinfo.texture_formats[i];
+			if(!SDL_ISPIXELFORMAT_FOURCC(format) && !SDL_ISPIXELFORMAT_INDEXED(format) && (pixelformat == SDL_PIXELFORMAT_UNKNOWN || SDL_BYTESPERPIXEL(format) < SDL_BYTESPERPIXEL(pixelformat))){
+				pixelformat = format;
+			}
+		}
 	
-		gBufferTexture = SDL_CreateTexture(gRenderer, SDL_PIXELFORMAT_RGBX8888, SDL_TEXTUREACCESS_STREAMING, width, height);
+		gBufferTexture = SDL_CreateTexture(gRenderer, pixelformat, SDL_TEXTUREACCESS_STREAMING, width, height);
+		Uint32 format;
+		SDL_QueryTexture(gBufferTexture, &format, 0, 0, 0);
+		gBufferTextureFormat = SDL_AllocFormat(format);
 		platform_refresh_screenbuffer(width, height, width);
 	} else {
 		if (_surface != NULL)
@@ -777,8 +804,8 @@ static void platform_refresh_screenbuffer(int width, int height, int pitch)
 				dst += pitch;
 			}
 		}
-		if (newScreenBufferSize - _screenBufferSize > 0)
-			memset((uint8*)newScreenBuffer + _screenBufferSize, 0, newScreenBufferSize - _screenBufferSize);
+		//if (newScreenBufferSize - _screenBufferSize > 0)
+		//	memset((uint8*)newScreenBuffer + _screenBufferSize, 0, newScreenBufferSize - _screenBufferSize);
 		free(_screenBuffer);
 	}
 

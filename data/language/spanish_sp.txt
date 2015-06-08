@@ -3495,7 +3495,7 @@ STR_5157    :Unlock all prices
 STR_5158    :Quit to menu
 STR_5159    :Exit OpenRCT2
 STR_5160    :{MONTH} {STRINGID}, Year {COMMA16}
-STR_5161    :{WHITE}Date Format:
+STR_5161    :Date Format:
 STR_5162    :Day/Month/Year
 STR_5163    :Month/Day/Year
 STR_5164    :Twitch Channel name
@@ -3552,7 +3552,7 @@ STR_5214    :Map Generation
 STR_5215    :Track Design Manager
 STR_5216    :Track Design Manager List
 STR_5217    :Cheats
-STR_5218    :Colour Schemes
+STR_5218    :Themes
 STR_5219    :Options
 STR_5220    :Keyboard Shortcuts
 STR_5221    :Change Keyboard Shortcut
@@ -3572,13 +3572,13 @@ STR_5234    :{SMALLFONT}{BLACK}Prompts
 STR_5235    :{SMALLFONT}{BLACK}Settings
 STR_5236    :Window:
 STR_5237    :Palette:
-STR_5238    :Colour Schemes:
+STR_5238    :Current Theme:
 STR_5239    :Duplicate
-STR_5240    :Enter a name for the colour scheme
-STR_5241    :Can't change this preset
-STR_5242    :Preset name already exists
+STR_5240    :Enter a name for the theme
+STR_5241    :Can't change this theme
+STR_5242    :Theme name already exists
 STR_5243    :Invalid characters used
-STR_5244    :Colour schemes
+STR_5244    :Themes
 STR_5245    :Top Toolbar
 STR_5246    :Bottom Toolbar
 STR_5247    :Track Editor Bottom Toolbar
@@ -3590,3 +3590,25 @@ STR_5252    :Title Scenario Selection
 STR_5253    :Park Information
 STR_5254    :Add nausea
 STR_5255    :{MEDIUMFONT}{BLACK}All peeps become nauseous
+STR_5256    :Create a new theme to make changes to
+STR_5257    :{SMALLFONT}{BLACK}Create a new theme based on the current one
+STR_5258    :{SMALLFONT}{BLACK}Delete the current theme
+STR_5259    :{SMALLFONT}{BLACK}Rename the current theme
+STR_5260    :Giant Screenshot
+STR_5261    :Filter
+STR_5262    :Wacky Worlds
+STR_5263    :Time Twister
+STR_5264    :Custom
+STR_5265    :{SMALLFONT}{BLACK}Select which content sources are visible
+STR_5266    :{SMALLFONT}{BLACK}Display
+STR_5267    :{SMALLFONT}{BLACK}Culture and Units
+STR_5268    :{SMALLFONT}{BLACK}Audio
+STR_5269    :{SMALLFONT}{BLACK}Controls
+STR_5270    :{SMALLFONT}{BLACK}Miscellaneous
+STR_5271    :{SMALLFONT}{BLACK}Twitch
+STR_5272    :{SMALLFONT}{BLACK}Small Scenery
+STR_5273    :{SMALLFONT}{BLACK}Large Scenery
+STR_5274    :{SMALLFONT}{BLACK}Footpaths
+STR_5275    :Search for Objects
+STR_5276    :Enter the name of an object to search for
+STR_5277    :Clear

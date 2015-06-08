@@ -31,6 +31,10 @@
 struct rct_window;
 union rct_window_event;
 extern uint8 TextInputDescriptionArgs[8];
+extern char gTextBoxInput[512];
+extern int gMaxTextBoxInputLength;
+extern int gTextBoxFrameNo;
+extern bool gUsingWidgetTextBox;
 
 typedef void wndproc(struct rct_window*, union rct_window_event*);
 
@@ -46,6 +50,8 @@ typedef struct {
 	window_identifier window;
 	int widget_index;
 } widget_identifier;
+
+extern widget_identifier gCurrentTextBox;
 
 /**
  * Widget structure
@@ -570,7 +576,7 @@ void window_themes_open();
 void window_text_input_open(rct_window* call_w, int call_widget, rct_string_id title, rct_string_id description, rct_string_id existing_text, uint32 existing_args, int maxLength);
 void window_text_input_raw_open(rct_window* call_w, int call_widget, rct_string_id title, rct_string_id description, utf8string existing_text, int maxLength);
 rct_window *window_mapgen_open();
-rct_window *window_loadsave_open(int type);
+rct_window *window_loadsave_open(int type, char *defaultName);
 
 void window_editor_main_open();
 void window_editor_bottom_toolbar_open();
@@ -604,6 +610,14 @@ void textinput_cancel();
 
 void window_move_and_snap(rct_window *w, int newWindowX, int newWindowY, int snapProximity);
 int window_can_resize(rct_window *w);
+
+void window_start_textbox(rct_window *call_w, int call_widget, rct_string_id existing_text, uint32 existing_args, int maxLength);
+void window_cancel_textbox();
+void window_update_textbox_caret();
+void window_update_textbox();
+
+//Cheat: in-game land ownership editor
+void toggle_ingame_land_ownership_editor();
 
 #ifdef _MSC_VER
 	#define window_get_register(w)														\

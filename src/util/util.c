@@ -69,6 +69,17 @@ void path_set_extension(char *path, const char *extension)
 	strcpy(ch, extension);
 }
 
+void path_remove_extension(char *path)
+{
+	char *ch = path + strlen(path);
+	for (--ch; ch >= path; --ch) {
+		if (*ch == '.') {
+			*ch = '\0';
+			break;
+		}
+	}
+}
+
 long fsize(FILE *fp)
 {
 	long originalPosition, size;
@@ -133,4 +144,9 @@ int strcicmp(char const *a, char const *b)
 		if (d != 0 || !*a)
 			return d;
 	}
+}
+
+bool utf8_is_bom(const char *str)
+{
+	return str[0] == 0xEF && str[1] == 0xBB && str[2] == 0xBF;
 }

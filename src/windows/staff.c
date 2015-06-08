@@ -910,7 +910,7 @@ void window_staff_overview_paint(){
 	RCT2_GLOBAL(0x13CE952 + 4, uint32) = argument2;
 	rct_widget* widget = &w->widgets[WIDX_BTM_LABEL];
 	int x = (widget->left + widget->right) / 2 + w->x;
-	int y = w->y + widget->top - 1;
+	int y = w->y + widget->top;
 	int width = widget->right - widget->left;
 	gfx_draw_string_centred_clipped(dpi, 1191, (void*)0x13CE952, 0, x, y, width);
 }
@@ -1123,7 +1123,7 @@ void window_staff_overview_tool_down(){
 		rct_map_element *mapElement;
 		footpath_get_coordinates_from_pos(x, y + 16, &dest_x, &dest_y, NULL, &mapElement);
 
-		if (dest_x == 0x8000)return;
+		if (dest_x == (sint16)0x8000)return;
 
 		// Set the coordinate of destination to be exactly 
 		// in the middle of a tile.
@@ -1172,7 +1172,7 @@ void window_staff_overview_tool_down(){
 		int dest_x, dest_y;
 		footpath_get_coordinates_from_pos(x, y, &dest_x, &dest_y, NULL, NULL);
 
-		if (dest_x == 0x8000)return;
+		if (dest_x == (sint16)0x8000)return;
 
 		game_do_command(dest_x, 1, dest_y, w->number, GAME_COMMAND_SET_STAFF_PATROL, 0, 0);
 	}

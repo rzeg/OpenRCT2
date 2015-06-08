@@ -350,6 +350,7 @@ Channel::Channel()
 	stopping = false;
 	source = 0;
 	deletesourceondone = false;
+	group = MIXER_GROUP_NONE;
 }
 
 Channel::~Channel()
@@ -428,6 +429,11 @@ bool Channel::SetOffset(unsigned long offset)
 		return true;
 	}
 	return false;
+}
+
+void Channel::SetGroup(int group)
+{
+	Channel::group = group;
 }
 
 Mixer::Mixer()
@@ -516,7 +522,6 @@ Channel* Mixer::Play(Source& source, int loop, bool deleteondone, bool deletesou
 		newchannel->Play(source, loop);
 		newchannel->deleteondone = deleteondone;
 		newchannel->deletesourceondone = deletesourceondone;
-		newchannel->stopping = false;
 		channels.push_back(newchannel);
 	}
 	Unlock();
@@ -600,7 +605,6 @@ void Mixer::MixChannel(Channel& channel, uint8* data, int length)
 					break;
 				}
 
-				int volume = channel.volume;
 				uint8* dataconverted = 0;
 				const uint8* tomix = 0;
 
@@ -658,12 +662,16 @@ void Mixer::MixChannel(Channel& channel, uint8* data, int length)
 					mixlength = length - loaded;
 				}
 
-				int startvolume = channel.oldvolume;
-				int endvolume = channel.volume;
+				float volumeadjust = (gConfigSound.master_volume / 100.0f);
+				if (channel.group == MIXER_GROUP_MUSIC) {
+					volumeadjust *= (gConfigSound.music_volume / 100.0f);
+				}
+				int startvolume = (int)(channel.oldvolume * volumeadjust);
+				int endvolume = (int)(channel.volume * volumeadjust);
 				if (channel.stopping) {
 					endvolume = 0;
 				}
-				int mixvolume = volume;
+				int mixvolume = (int)(channel.volume * volumeadjust);
 				if (startvolume != endvolume) {
 					// fade between volume levels to smooth out sound and minimize clicks from sudden volume changes
 					if (!effectbufferloaded) {
@@ -836,6 +844,11 @@ int Mixer_Channel_SetOffset(void* channel, unsigned long offset)
 	return ((Channel*)channel)->SetOffset(offset);
 }
 
+void Mixer_Channel_SetGroup(void* channel, int group)
+{
+	((Channel*)channel)->SetGroup(group);
+}
+
 void* Mixer_Play_Music(int pathid, int loop, int streaming)
 {
 	if (streaming) {
@@ -853,6 +866,8 @@ void* Mixer_Play_Music(int pathid, int loop, int streaming)
 			Channel* channel = gMixer.Play(*source_samplestream, loop, false, true);
 			if (!channel) {
 				delete source_samplestream;
+			} else {
+				channel->SetGroup(MIXER_GROUP_MUSIC);
 			}
 			return channel;
 		} else {
@@ -861,7 +876,11 @@ void* Mixer_Play_Music(int pathid, int loop, int streaming)
 		}
 	} else {
 		if (gMixer.LoadMusic(pathid)) {
-			return gMixer.Play(*gMixer.musicsources[pathid], MIXER_LOOP_INFINITE, false, false);
+			Channel* channel = gMixer.Play(*gMixer.musicsources[pathid], MIXER_LOOP_INFINITE, false, false);
+			if (channel) {
+				channel->SetGroup(MIXER_GROUP_MUSIC);
+			}
+			return channel;
 		}
 	}
 	return 0;

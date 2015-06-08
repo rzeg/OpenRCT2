@@ -170,7 +170,7 @@ static void sub_693BE5(rct_peep* peep, uint8 al){
 
 	// If NONE_1 or NONE_2
 	if (peep->action >= PEEP_ACTION_NONE_1){
-		peep->action = PEEP_STATE_FALLING;
+		peep->action_sprite_image_offset = 0;
 	}
 	sub_693B58(peep);
 }
@@ -667,7 +667,7 @@ void peep_update_falling(rct_peep* peep){
 					if (peep->item_standard_flags & PEEP_ITEM_BALLOON){
 						peep->item_standard_flags &= ~PEEP_ITEM_BALLOON;
 
-						if (peep->sprite_type == 19 && peep->x != 0x8000){
+						if (peep->sprite_type == 19 && peep->x != (sint16)0x8000){
 							create_balloon(peep->x, peep->y, height, peep->balloon_colour, 0);
 							peep->var_45 |= (1 << 3);
 							peep_update_sprite_type(peep);
@@ -983,7 +983,7 @@ static void peep_update_ride_sub_state_0(rct_peep* peep){
 	uint8* car_array = RCT2_ADDRESS(0xF1AD78, uint8);
 
 	if (RCT2_ADDRESS(RCT2_ADDRESS_RIDE_FLAGS, uint32)[ride->type * 2] & RIDE_TYPE_FLAG_13){
-		if (ride->num_riders >= ride->var_0D0)
+		if (ride->num_riders >= ride->operation_option)
 			return;
 	}
 	else{
@@ -1201,7 +1201,7 @@ void peep_update_ride_sub_state_1(rct_peep* peep){
 
 		map_element = ride_get_station_start_track_element(ride, peep->current_ride_station);
 
-		uint8 direction_track = map_element->type & MAP_ELEMENT_DIRECTION_MASK;
+		uint8 direction_track = (!map_element ? 0 : map_element->type & MAP_ELEMENT_DIRECTION_MASK);
 
 		peep->var_37 = (direction_entrance << 2) | (direction_track << 4);
 
@@ -1246,7 +1246,7 @@ void peep_update_ride_sub_state_1(rct_peep* peep){
 
 		map_element = ride_get_station_start_track_element(ride, peep->current_ride_station);
 
-		uint8 direction_track = map_element->type & MAP_ELEMENT_DIRECTION_MASK;
+		uint8 direction_track = (!map_element ? 0 : map_element->type & MAP_ELEMENT_DIRECTION_MASK);
 
 		vehicle = GET_VEHICLE(ride->vehicles[peep->current_train]);
 		ride_entry = GET_RIDE_ENTRY(vehicle->ride_subtype);
@@ -1726,7 +1726,7 @@ static void peep_update_ride_sub_state_7(rct_peep* peep){
 
 	map_element = ride_get_station_start_track_element(ride, peep->current_ride_station);
 
-	uint8 station_direction = map_element->type & MAP_ELEMENT_DIRECTION_MASK;
+	uint8 station_direction = (!map_element ? 0 : map_element->type & MAP_ELEMENT_DIRECTION_MASK);
 
 	vehicle = GET_VEHICLE(ride->vehicles[peep->current_train]);
 	
@@ -3337,7 +3337,7 @@ static void peep_update_buying(rct_peep* peep)
 			return;
 		}
 
-		if (ride->type == RIDE_TYPE_ATM){
+		if (ride->type == RIDE_TYPE_CASH_MACHINE){
 			if (peep->current_ride != peep->previous_ride){
 				peep->cash_in_pocket += MONEY(50,00);
 			}
@@ -3357,7 +3357,7 @@ static void peep_update_buying(rct_peep* peep)
 	uint8 item_bought = 0;
 
 	if (peep->current_ride != peep->previous_ride){
-		if (ride->type == RIDE_TYPE_ATM){
+		if (ride->type == RIDE_TYPE_CASH_MACHINE){
 			item_bought = !(RCT2_CALLPROC_X(0x0069AEB7, peep->current_ride << 8, 0, 0, 0, (int)peep, 0, 0) & 0x100);
 
 			if (!item_bought){
@@ -4578,6 +4578,9 @@ void peep_update_crowd_noise()
 #ifdef USE_MIXER
 			if (!gCrowdSoundChannel) {
 				gCrowdSoundChannel = Mixer_Play_Music(PATH_ID_CSS2, MIXER_LOOP_INFINITE, false);
+				if (gCrowdSoundChannel) {
+					Mixer_Channel_SetGroup(gCrowdSoundChannel, MIXER_GROUP_NONE);
+				}
 			}
 			if (gCrowdSoundChannel) {
 				Mixer_Channel_Volume(gCrowdSoundChannel, DStoMixerVolume(volume));
@@ -4619,7 +4622,7 @@ void peep_applause()
 		// Release balloon
 		if (peep->item_standard_flags & PEEP_ITEM_BALLOON) {
 			peep->item_standard_flags &= ~PEEP_ITEM_BALLOON;
-			if (peep->x != 0x8000) {
+			if (peep->x != (sint16)0x8000) {
 				create_balloon(peep->x, peep->y, peep->z + 9, peep->balloon_colour, 0);
 				peep->var_45 |= 8;
 				peep_update_sprite_type(peep);
@@ -5272,7 +5275,7 @@ static void peep_stop_purchase_thought(rct_peep* peep, uint8 ride_type){
 		thought_type = PEEP_THOUGHT_TYPE_THIRSTY;
 		if (!(RCT2_ADDRESS(0x97CF40, uint32)[ride_type * 2] & 0x1000000)){
 			thought_type = PEEP_THOUGHT_RUNNING_OUT;
-			if (ride_type != RIDE_TYPE_ATM){
+			if (ride_type != RIDE_TYPE_CASH_MACHINE){
 				thought_type = PEEP_THOUGHT_TYPE_BATHROOM;
 				if (!(RCT2_ADDRESS(0x97CF40, uint32)[ride_type * 2] & 0x2000000)){
 					return;

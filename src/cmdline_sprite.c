@@ -1,6 +1,8 @@
 #include <lodepng/lodepng.h>
+#include <math.h>
 #include "cmdline.h"
 #include "drawing/drawing.h"
+#include "platform/platform.h"
 #include "util/util.h"
 
 #define MODE_DEFAULT 0
@@ -457,12 +459,75 @@ int cmdline_for_sprite(const char **argv, int argc)
 		}
 
 		if (!sprite_file_export(spriteIndex, outputPath)) {
+			fprintf(stderr, "Could not export\n");
 			sprite_file_close();
 			return -1;
 		}
 
 		sprite_file_close();
 		return 1;
+	} else if (_strcmpi(argv[0], "exportall") == 0) {
+		if (argc < 3) {
+			fprintf(stderr, "usage: sprite exportall <spritefile> <output directory>\n");
+			return -1;
+		}
+
+		const char *spriteFilePath = argv[1];
+		char outputPath[_MAX_PATH];
+
+		if (!sprite_file_open(spriteFilePath)) {
+			fprintf(stderr, "Unable to open input sprite file.\n");
+			return -1;
+		}
+
+		if (!platform_ensure_directory_exists(argv[2])){
+			fprintf(stderr, "Unable to create directory.\n");
+			return -1;
+		}
+
+
+		int maxIndex = (int)spriteFileHeader.num_entries;
+		int numbers = (int)floor(log(maxIndex));
+		
+		strncpy(outputPath, argv[2], _MAX_PATH);
+		int pathLen = strlen(outputPath);
+
+		if (pathLen >= _MAX_PATH - numbers - 5){
+			fprintf(stderr, "Path too long.\n");
+			return -1;
+		}
+
+		for (int x = 0; x < numbers; x++){
+			outputPath[pathLen + x] = '0';
+		}
+		strncpy(outputPath + pathLen + numbers, ".png", _MAX_PATH);
+
+		for (int spriteIndex = 0; spriteIndex < maxIndex; spriteIndex++){
+
+			if (spriteIndex % 100 == 99){
+				// Status indicator
+				printf("\r%d / %d, %d%%", spriteIndex, maxIndex, spriteIndex / maxIndex);
+			}
+
+			// Add to the index at the end of the file name
+			char *counter = outputPath + pathLen + numbers - 1;
+			(*counter)++;
+			while (*counter > '9'){
+				*counter = '0';
+				counter--;
+				(*counter)++;
+			}
+
+			if (!sprite_file_export(spriteIndex, outputPath)) {
+				fprintf(stderr, "Could not export\n");
+				sprite_file_close();
+				return -1;
+			}
+		}
+
+		sprite_file_close();
+		return 1;
+
 	} else if (_strcmpi(argv[0], "create") == 0) {
 		if (argc < 2) {
 			fprintf(stderr, "usage: sprite create <spritefile>\n");
@@ -514,8 +579,7 @@ int cmdline_for_sprite(const char **argv, int argc)
 			return -1;
 
 		return 1;
-	}
-	else if (_strcmpi(argv[0], "build") == 0) {
+	} else if (_strcmpi(argv[0], "build") == 0) {
 		if (argc < 3) {
 			fprintf(stderr, "usage: sprite build <spritefile> <resourcedir> [silent]\n");
 			return -1;
@@ -523,7 +587,7 @@ int cmdline_for_sprite(const char **argv, int argc)
 
 		const char *spriteFilePath = argv[1];
 		const char *resourcePath = argv[2];
-		char imagePath[256], number[8];
+		char imagePath[MAX_PATH];
 		int resourceLength = strlen(resourcePath);
 
 		bool silent = (argc >= 4 && strcmp(argv[3], "silent") == 0);
@@ -535,14 +599,16 @@ int cmdline_for_sprite(const char **argv, int argc)
 		sprite_file_save(spriteFilePath);
 
 		fprintf(stderr, "Building: %s\n", spriteFilePath);
-		for (int i = 0; fileExists; i++) {
-			_itoa(i, number, 10);
+		int i = 0;
+		do {
+			// Create image path
 			strcpy(imagePath, resourcePath);
-			if (resourceLength == 0 || (resourcePath[resourceLength - 1] != '/' && resourcePath[resourceLength - 1] != '\\'))
-				strcat(imagePath, "/");
-			strcat(imagePath, number);
-			strcat(imagePath, ".png");
-			if (file = fopen(imagePath, "r")) {
+			if (resourcePath[resourceLength - 1] == '/' || resourcePath[resourceLength - 1] == '\\')
+				imagePath[resourceLength - 1] = 0;
+			sprintf(imagePath, "%s%c%d.png", imagePath, platform_get_path_separator(), i);
+
+			file = fopen(imagePath, "r");
+			if (file != NULL) {
 				fclose(file);
 				rct_g1_element spriteElement;
 				uint8 *buffer;
@@ -578,12 +644,8 @@ int cmdline_for_sprite(const char **argv, int argc)
 				if (!silent)
 					fprintf(stderr, "Added: %s\n", imagePath);
 			}
-			else {
-
-				fprintf(stderr, "Could not find file: %s\n", imagePath);
-				fileExists = false;
-			}
-		}
+			i++;
+		} while (file != NULL);
 
 
 		fprintf(stderr, "Finished\n", imagePath);

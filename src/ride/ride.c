@@ -446,6 +446,14 @@ int ride_get_total_length(rct_ride *ride)
 	return totalLength;
 }
 
+int ride_get_total_time(rct_ride *ride)
+{
+	int i, totalTime = 0;
+	for (i = 0; i < ride->num_stations; i++)
+		totalTime += ride->time[i];
+	return totalTime;
+}
+
 int ride_can_have_multiple_circuits(rct_ride *ride)
 {
 	if (!(RCT2_GLOBAL(0x0097D4F2 + (ride->type * 8), uint16) & 0x200))
@@ -1366,7 +1374,7 @@ static void ride_chairlift_update(rct_ride *ride)
 	if (ride->breakdown_reason_pending == 0)
 		return;
 
-	ax = ride->var_0D0 * 2048;
+	ax = ride->operation_option * 2048;
 	bx = ride->var_148;
 	cx = bx + ax;
 	ride->var_148 = cx;
@@ -1616,7 +1624,7 @@ static int ride_get_new_breakdown_problem(rct_ride *ride)
 		RCT2_GLOBAL(RCT2_ADDRESS_CURRENT_RAIN_LEVEL, uint8) == 0 ? 3 : 20;
 
 	entry = ride_get_entry(ride);
-	if (entry->var_008 & 0x4000)
+	if (entry->flags & RIDE_ENTRY_FLAG_14)
 		return -1;
 	
 	availableBreakdownProblems = RideAvailableBreakdowns[ride->type];
@@ -1707,9 +1715,17 @@ static void ride_prepare_breakdown(int rideIndex, int breakdownReason)
 
 		// Set flag on broken car
 		vehicle = &(g_sprite_list[ride->vehicles[ride->broken_vehicle]].vehicle);
-		for (i = ride->broken_car; i > 0; i--)
-			vehicle = &(g_sprite_list[vehicle->next_vehicle_on_train].vehicle);
-		vehicle->var_48 |= 0x100;
+		for (i = ride->broken_car; i > 0; i--) {
+			if (vehicle->next_vehicle_on_train == (uint16)0xFFFFFFFF) {
+				vehicle = NULL;
+				break;
+			}
+			else {
+				vehicle = &(g_sprite_list[vehicle->next_vehicle_on_train].vehicle);
+			}
+		}
+		if (vehicle != NULL)
+			vehicle->var_48 |= 0x100;
 		break;
 	case BREAKDOWN_VEHICLE_MALFUNCTION:
 		// Choose a random train
@@ -3131,7 +3147,7 @@ void game_command_set_ride_setting(int *eax, int *ebx, int *ecx, int *edx, int *
 		for (int i = 0; i < ride->type; i++) {
 			while (*(available_modes++) != 255) {}
 		}
-		if (ride_entry->var_008 & (1 << 17)){
+		if (ride_entry->flags & RIDE_ENTRY_FLAG_17){
 			available_modes += 2;
 		}
 
@@ -3144,7 +3160,7 @@ void game_command_set_ride_setting(int *eax, int *ebx, int *ecx, int *edx, int *
 		if (*available_modes == 0xFF) new_value = default_mode;
 
 		if (available_modes[1] == 0xFF){
-			if (ride_entry->var_008 & (1 << 15))
+			if (ride_entry->flags & RIDE_ENTRY_FLAG_15)
 				new_value = default_mode;
 		}
 
@@ -3467,7 +3483,7 @@ void sub_6B4D26(int rideIndex, rct_xy_element *startElement)
 	int trackType;
 
 	ride = GET_RIDE(rideIndex);
-	if (ride->type == RIDE_TYPE_BUMPER_BOATS) {
+	if (ride->type == RIDE_TYPE_BOAT_RIDE) {
 
 	} else if (ride->type != RIDE_TYPE_MAZE) {
 
@@ -3685,14 +3701,14 @@ int ride_is_valid_for_test(int rideIndex, int goingToBeOpen, int isApplying)
 
 	if (ride->subtype != 255) {
 		rct_ride_type *rideType = GET_RIDE_ENTRY(ride->subtype);
-		if (rideType->var_008 & 2) {
+		if (rideType->flags & RIDE_ENTRY_FLAG_1) {
 			RCT2_GLOBAL(RCT2_ADDRESS_GAME_COMMAND_ERROR_TEXT, uint16) = STR_TRACK_UNSUITABLE_FOR_TYPE_OF_TRAIN;
 			if (ride_check_track_suitability_a(&trackElement, &problematicTrackElement)) {
 				loc_6B528A(&problematicTrackElement);
 				return 0;
 			}
 		}
-		if (rideType->var_008 & 4) {
+		if (rideType->flags & RIDE_ENTRY_FLAG_2) {
 			RCT2_GLOBAL(RCT2_ADDRESS_GAME_COMMAND_ERROR_TEXT, uint16) = STR_TRACK_UNSUITABLE_FOR_TYPE_OF_TRAIN;
 			if (ride_check_track_suitability_b(&trackElement, &problematicTrackElement)) {
 				loc_6B528A(&problematicTrackElement);
@@ -3814,14 +3830,14 @@ int ride_is_valid_for_open(int rideIndex, int goingToBeOpen, int isApplying)
 
 	if (ride->subtype != 255) {
 		rct_ride_type *rideType = GET_RIDE_ENTRY(ride->subtype);
-		if (rideType->var_008 & 2) {
+		if (rideType->flags & RIDE_ENTRY_FLAG_1) {
 			RCT2_GLOBAL(RCT2_ADDRESS_GAME_COMMAND_ERROR_TEXT, uint16) = STR_TRACK_UNSUITABLE_FOR_TYPE_OF_TRAIN;
 			if (ride_check_track_suitability_a(&trackElement, &problematicTrackElement)) {
 				loc_6B528A(&problematicTrackElement);
 				return 0;
 			}
 		}
-		if (rideType->var_008 & 4) {
+		if (rideType->flags & RIDE_ENTRY_FLAG_2) {
 			RCT2_GLOBAL(RCT2_ADDRESS_GAME_COMMAND_ERROR_TEXT, uint16) = STR_TRACK_UNSUITABLE_FOR_TYPE_OF_TRAIN;
 			if (ride_check_track_suitability_b(&trackElement, &problematicTrackElement)) {
 				loc_6B528A(&problematicTrackElement);
@@ -4363,4 +4379,12 @@ bool ride_has_whirlpool(rct_ride *ride) {
 uint8 ride_get_helix_sections(rct_ride *ride) {
 	// Helix sections stored in the low 5 bits.
 	return ride->special_track_elements & 0x1F;
+}
+
+bool ride_is_powered_launched(rct_ride *ride)
+{
+	return
+		ride->mode == RIDE_MODE_POWERED_LAUNCH_PASSTROUGH ||
+		ride->mode == RIDE_MODE_POWERED_LAUNCH ||
+		ride->mode == RIDE_MODE_POWERED_LAUNCH_BLOCK_SECTIONED;
 }

@@ -61,10 +61,10 @@ static void automatically_set_peep_spawn(int x, int y, int z)
 		}
 	}
 
-	peepSpawn->x = (word_981D6C[direction].x * 15) + 16;
-	peepSpawn->y = (word_981D6C[direction].y * 15) + 16;
+	peepSpawn->x = x + (word_981D6C[direction].x * 15) + 16;
+	peepSpawn->y = y + (word_981D6C[direction].y * 15) + 16;
 	peepSpawn->direction = direction;
-	peepSpawn->z = z / 2;
+	peepSpawn->z = z;
 }
 
 rct_map_element *map_get_footpath_element(int x, int y, int z)
@@ -499,7 +499,7 @@ void footpath_get_coordinates_from_pos(int screenX, int screenY, int *x, int *y,
 	if (interactionType != VIEWPORT_INTERACTION_ITEM_FOOTPATH || !(viewport->flags & (VIEWPORT_FLAG_UNDERGROUND_INSIDE | VIEWPORT_FLAG_HIDE_BASE | VIEWPORT_FLAG_HIDE_VERTICAL))) {
 		get_map_coordinates_from_pos(screenX, screenY, VIEWPORT_INTERACTION_MASK_FOOTPATH & VIEWPORT_INTERACTION_MASK_TERRAIN, &map_pos.x, &map_pos.y, &interactionType, &myMapElement, &viewport);
 		if (interactionType == VIEWPORT_INTERACTION_ITEM_NONE) {
-			if (x != NULL) *x = 0x8000;
+			if (x != NULL) *x = (sint16)0x8000;
 			return;
 		}
 	}
